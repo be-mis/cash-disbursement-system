@@ -1,7 +1,18 @@
 import React from 'react';
-import { Page, Role, User } from '../types';
-import { ICONS, ALL_ROLES } from '../constants';
+// import { Page, Role, User } from '../types';
+
+// Define Role and User types locally if not available elsewhere
+export type Role = 'Admin' | 'Manager' | 'User'; // Adjust roles as needed
+export interface User {
+  id: number;
+  name: string;
+  role: Role;
+}
+import { ICONS, ALL_ROLES } from '../utils/constants';
 import { Select } from './ui';
+
+// Define Page type locally since it's not in the main types file
+export type Page = 'dashboard' | 'requests' | 'inbox';
 
 interface HeaderProps {
   currentPage: Page;
@@ -12,7 +23,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, onUserChange, users }) => {
-    const navItems: { id: Page; label: string; icon: JSX.Element }[] = [
+    const navItems: { id: Page; label: string; icon: string }[] = [
         { id: 'dashboard', label: 'Dashboard', icon: ICONS.dashboard },
         { id: 'requests', label: 'Requests', icon: ICONS.requests },
         { id: 'inbox', label: 'Inbox', icon: ICONS.inbox },
@@ -41,7 +52,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, o
                                             : 'text-gray-300 hover:bg-white/10 hover:text-white'
                                     }`}
                                 >
-                                    {item.icon}
+                                    <span dangerouslySetInnerHTML={{ __html: item.icon }} />
                                     <span>{item.label}</span>
                                 </button>
                             ))}
@@ -81,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, o
                                     : 'text-gray-300 hover:bg-white/10 hover:text-white'
                             }`}
                         >
-                            {item.icon}
+                            <span dangerouslySetInnerHTML={{ __html: item.icon }} />
                             <span className="text-xs">{item.label}</span>
                         </button>
                     ))}

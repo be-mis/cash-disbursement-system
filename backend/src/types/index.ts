@@ -1,5 +1,6 @@
 // User types
 export type Role = 'Employee' | 'Manager' | 'CEO' | 'Finance';
+export type Page = 'dashboard' | 'requests' | 'inbox';
 
 export interface User {
   id: number;
