@@ -1,6 +1,6 @@
 import React from 'react';
-import { Page, Role, User } from '../types/types';
-import { ICONS, ALL_ROLES } from '../utils/constants';
+import { Page, Role, User } from '../types';
+import { ICONS, ALL_ROLES } from '../constants';
 import { Select } from './ui';
 
 interface HeaderProps {
