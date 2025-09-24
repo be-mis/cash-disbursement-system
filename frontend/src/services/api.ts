@@ -1,5 +1,4 @@
-// Updated API service with expanded mock data for all three request types
-import { User, Request, Role, RequestStatus, TimelineEvent, RequestType, ReimbursementRequest, CashAdvanceRequest, LiquidationRequest, Priority } from '../types/types';
+import { User, Request, Role, RequestStatus, TimelineEvent, RequestType, ReimbursementRequest, CashAdvanceRequest, LiquidationRequest, Priority, CreateReimbursementDto, CreateCashAdvanceDto, CreateLiquidationDto } from '../types/types';
 
 const USERS: User[] = [
     { id: 1, name: 'Alice Johnson', role: 'Employee', email: 'alice.johnson@company.com', department: 'Marketing' },
@@ -265,6 +264,13 @@ const REQUESTS: Request[] = [
 
 let requestsDB = [...REQUESTS];
 
+// Helper function to generate new request ID
+const generateRequestId = (): string => {
+    const existingIds = requestsDB.map(r => parseInt(r.id.replace('REQ', '')));
+    const maxId = Math.max(...existingIds);
+    return `REQ${String(maxId + 1).padStart(3, '0')}`;
+};
+
 export const api = {
     getUsers: async (): Promise<User[]> => {
         await new Promise(res => setTimeout(res, 200));
@@ -385,5 +391,165 @@ export const api = {
         }
         
         return connected;
+    },
+
+    // Create Reimbursement Request
+    createReimbursementRequest: async (data: CreateReimbursementDto): Promise<Request> => {
+        await new Promise(res => setTimeout(res, 500));
+        
+        const user = USERS.find(u => u.id === data.employeeId);
+        if (!user) throw new Error('User not found');
+        
+        const manager = USERS.find(u => u.role === 'Manager');
+        if (!manager) throw new Error('Manager not found');
+
+        const newRequest: ReimbursementRequest = {
+            id: generateRequestId(),
+            requestType: 'REIMBURSEMENT',
+            employeeName: user.name,
+            employeeId: data.employeeId,
+            amount: data.amount,
+            currency: 'PHP',
+            description: data.description,
+            category: data.category,
+            status: 'PENDING_VALIDATION',
+            priority: data.priority,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            approvers: [manager],
+            nextActionBy: ['Manager'],
+            timeline: [{
+                id: `timeline-${Date.now()}`,
+                stage: 'Request Submitted',
+                decision: 'submitted',
+                type: 'system',
+                actor: { id: user.id, name: user.name, role: user.role },
+                timestamp: new Date().toISOString(),
+                comment: 'Reimbursement request created by employee.'
+            }],
+            attachments: data.attachments || [],
+            expenseDate: data.expenseDate,
+            receipts: [], // Will be populated with actual receipts
+            businessPurpose: data.businessPurpose
+        };
+
+        requestsDB.push(newRequest);
+        return newRequest;
+    },
+
+    // Create Cash Advance Request
+    createCashAdvanceRequest: async (data: CreateCashAdvanceDto): Promise<Request> => {
+        await new Promise(res => setTimeout(res, 500));
+        
+        const user = USERS.find(u => u.id === data.employeeId);
+        if (!user) throw new Error('User not found');
+        
+        const manager = USERS.find(u => u.role === 'Manager');
+        if (!manager) throw new Error('Manager not found');
+
+        const newRequest: CashAdvanceRequest = {
+            id: generateRequestId(),
+            requestType: 'CASH_ADVANCE',
+            employeeName: user.name,
+            employeeId: data.employeeId,
+            amount: data.estimatedAmount,
+            currency: 'PHP',
+            description: data.description,
+            category: data.category,
+            status: 'PENDING_VALIDATION',
+            priority: data.priority,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            approvers: [manager],
+            nextActionBy: ['Manager'],
+            timeline: [{
+                id: `timeline-${Date.now()}`,
+                stage: 'Request Submitted',
+                decision: 'submitted',
+                type: 'system',
+                actor: { id: user.id, name: user.name, role: user.role },
+                timestamp: new Date().toISOString(),
+                comment: 'Cash advance request created by employee.'
+            }],
+            attachments: [],
+            plannedExpenseDate: data.plannedExpenseDate,
+            estimatedAmount: data.estimatedAmount,
+            advancePurpose: data.advancePurpose,
+            expectedLiquidationDate: data.expectedLiquidationDate
+        };
+
+        requestsDB.push(newRequest);
+        return newRequest;
+    },
+
+    // Create Liquidation Request
+    createLiquidationRequest: async (data: CreateLiquidationDto): Promise<Request> => {
+        await new Promise(res => setTimeout(res, 500));
+        
+        const advance = requestsDB.find(r => r.id === data.advanceId && r.requestType === 'CASH_ADVANCE') as CashAdvanceRequest;
+        if (!advance) throw new Error('Advance request not found');
+        
+        const user = USERS.find(u => u.id === advance.employeeId);
+        if (!user) throw new Error('User not found');
+        
+        const finance = USERS.find(u => u.role === 'Finance');
+        if (!finance) throw new Error('Finance user not found');
+
+        const remainingAmount = Math.max(0, advance.amount - data.actualAmount);
+
+        const newRequest: LiquidationRequest = {
+            id: generateRequestId(),
+            requestType: 'LIQUIDATION',
+            employeeName: user.name,
+            employeeId: advance.employeeId,
+            amount: data.actualAmount,
+            currency: 'PHP',
+            description: data.description,
+            category: advance.category,
+            status: 'PENDING_FINANCE', // Liquidations go directly to finance
+            priority: 'Medium',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            approvers: [finance],
+            nextActionBy: ['Finance'],
+            timeline: [{
+                id: `timeline-${Date.now()}`,
+                stage: 'Request Submitted',
+                decision: 'submitted',
+                type: 'system',
+                actor: { id: user.id, name: user.name, role: user.role },
+                timestamp: new Date().toISOString(),
+                comment: 'Liquidation request created by employee.'
+            }],
+            attachments: data.attachments,
+            advanceId: data.advanceId,
+            advanceAmount: advance.amount,
+            actualAmount: data.actualAmount,
+            remainingAmount: remainingAmount,
+            receipts: data.attachments,
+            liquidationSummary: data.liquidationSummary
+        };
+
+        // Update the advance request to link to liquidation and change status
+        const advanceIndex = requestsDB.findIndex(r => r.id === data.advanceId);
+        if (advanceIndex !== -1) {
+            (requestsDB[advanceIndex] as CashAdvanceRequest).liquidationId = newRequest.id;
+            // Advance status can remain as PENDING_LIQUIDATION or change to a "liquidation submitted" status
+        }
+
+        requestsDB.push(newRequest);
+        return newRequest;
+    },
+
+    // Get pending advances for liquidation (for current user)
+    getPendingAdvancesForUser: async (userId: number): Promise<CashAdvanceRequest[]> => {
+        await new Promise(res => setTimeout(res, 300));
+        
+        return requestsDB.filter(r => 
+            r.requestType === 'CASH_ADVANCE' && 
+            r.employeeId === userId && 
+            r.status === 'PENDING_LIQUIDATION' &&
+            !(r as CashAdvanceRequest).liquidationId // No liquidation submitted yet
+        ) as CashAdvanceRequest[];
     }
 };

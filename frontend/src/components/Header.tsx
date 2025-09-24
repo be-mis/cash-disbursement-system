@@ -14,7 +14,15 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, onUserChange, users }) => {
     const navItems: { id: Page; label: string; icon: string }[] = [
         { id: 'dashboard', label: 'Dashboard', icon: ICONS.dashboard },
-        { id: 'create', label: 'Create Request', icon: ICONS.plus },
+        ...(currentUser.role === 'Employee' ? [{
+            id: 'create',
+            label: 'Create Request',
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>`
+        }] : []),
         { id: 'requests', label: 'Requests', icon: ICONS.requests },
         { id: 'inbox', label: 'Inbox', icon: ICONS.inbox },
     ];

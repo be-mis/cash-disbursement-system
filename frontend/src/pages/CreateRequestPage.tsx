@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { RequestType, RequestCategory, Priority, CreateReimbursementDto, CreateCashAdvanceDto, CreateLiquidationDto, User, CashAdvanceRequest } from '../types/types';
+import { api } from '../services/api';
 import { Card, CardHeader, CardTitle, CardContent, Button, Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter, Input, Textarea, Label, Select } from '../components/ui';
 import { REQUEST_TYPE_LABELS } from '../utils/constants';
 import { formatPeso } from '../utils/formatters';
@@ -7,7 +8,7 @@ import { formatPeso } from '../utils/formatters';
 interface RequestFormProps {
   currentUser: User;
   onRequestCreated: () => void;
-  pendingAdvances?: CashAdvanceRequest[]; // For liquidation form
+  pendingAdvances?: CashAdvanceRequest[];
 }
 
 const RequestCreationForms: React.FC<RequestFormProps> = ({ 
@@ -103,7 +104,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
       if (!advanceData.expectedLiquidationDate) {
         newErrors.expectedLiquidationDate = 'Expected liquidation date is required';
       }
-      // Validate that liquidation date is after planned expense date
       if (advanceData.plannedExpenseDate && advanceData.expectedLiquidationDate) {
         if (new Date(advanceData.expectedLiquidationDate) <= new Date(advanceData.plannedExpenseDate)) {
           newErrors.expectedLiquidationDate = 'Liquidation date must be after planned expense date';
@@ -138,19 +138,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     setIsSubmitting(true);
     
     try {
-      // Here you would call your API to create the request
-      // For now, we'll simulate the API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Creating request:', {
-        type: selectedType,
-        data: selectedType === 'REIMBURSEMENT' ? reimbursementData :
-              selectedType === 'CASH_ADVANCE' ? advanceData : 
-              liquidationData
-      });
-      
-      // Reset forms
       if (selectedType === 'REIMBURSEMENT') {
+        await api.createReimbursementRequest(reimbursementData as CreateReimbursementDto);
         setReimbursementData({
           employeeId: currentUser.id,
           amount: 0,
@@ -162,6 +151,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           attachments: []
         });
       } else if (selectedType === 'CASH_ADVANCE') {
+        await api.createCashAdvanceRequest(advanceData as CreateCashAdvanceDto);
         setAdvanceData({
           employeeId: currentUser.id,
           estimatedAmount: 0,
@@ -172,7 +162,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           expectedLiquidationDate: '',
           priority: 'Medium'
         });
-      } else {
+      } else if (selectedType === 'LIQUIDATION') {
+        await api.createLiquidationRequest(liquidationData as CreateLiquidationDto);
         setLiquidationData({
           advanceId: '',
           actualAmount: 0,
@@ -187,6 +178,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
       
     } catch (error) {
       console.error('Failed to create request:', error);
+      setErrors({ submit: 'Failed to create request. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -538,6 +530,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
               {selectedType === 'CASH_ADVANCE' && renderAdvanceForm()}
               {selectedType === 'LIQUIDATION' && renderLiquidationForm()}
             </div>
+            {errors.submit && <p className="text-red-500 text-sm mt-4">{errors.submit}</p>}
           </DialogContent>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={closeForm} disabled={isSubmitting}>
