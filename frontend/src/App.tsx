@@ -3,6 +3,7 @@ import Header from './components/Header';
 import DashboardPage from './pages/DashboardPage';
 import RequestsPage from './pages/RequestsPage';
 import InboxPage from './pages/InboxPage';
+import CreateRequestPage from './pages/CreateRequestPage';
 import { Page, User, Request } from './types/types';
 import { api } from './services/api';
 
@@ -72,6 +73,8 @@ const App: React.FC = () => {
                 return <RequestsPage currentUser={currentUser} onUpdateRequest={handleRequestUpdate} />;
             case 'inbox':
                 return <InboxPage currentUser={currentUser} onUpdateRequest={handleRequestUpdate} />;
+            case 'create':
+                return <CreateRequestPage currentUser={currentUser} onRequestCreated={handleRequestUpdate} />;
             default:
                 return <DashboardPage currentUser={currentUser} requests={requests} />;
         }

@@ -1,18 +1,7 @@
 import React from 'react';
-// import { Page, Role, User } from '../types';
-
-// Define Role and User types locally if not available elsewhere
-export type Role = 'Admin' | 'Manager' | 'User'; // Adjust roles as needed
-export interface User {
-  id: number;
-  name: string;
-  role: Role;
-}
 import { ICONS, ALL_ROLES } from '../utils/constants';
 import { Select } from './ui';
-
-// Define Page type locally since it's not in the main types file
-export type Page = 'dashboard' | 'requests' | 'inbox';
+import { Page, Role, User } from '../types';
 
 interface HeaderProps {
   currentPage: Page;
@@ -25,6 +14,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, onUserChange, users }) => {
     const navItems: { id: Page; label: string; icon: string }[] = [
         { id: 'dashboard', label: 'Dashboard', icon: ICONS.dashboard },
+        { id: 'create', label: 'Create Request', icon: ICONS.plus },
         { id: 'requests', label: 'Requests', icon: ICONS.requests },
         { id: 'inbox', label: 'Inbox', icon: ICONS.inbox },
     ];
@@ -48,8 +38,12 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, o
                                     onClick={() => onNavigate(item.id)}
                                     className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                                         currentPage === item.id
-                                            ? 'bg-white/20 text-white font-semibold'
-                                            : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                                            ? item.id === 'create'
+                                                ? 'bg-green-500 text-white font-semibold'
+                                                : 'bg-white/20 text-white font-semibold'
+                                            : item.id === 'create'
+                                                ? 'bg-green-600 hover:bg-green-700 text-white'
+                                                : 'text-gray-300 hover:bg-white/10 hover:text-white'
                                     }`}
                                 >
                                     <span dangerouslySetInnerHTML={{ __html: item.icon }} />
@@ -80,7 +74,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, o
                     </div>
                 </div>
             </div>
-             <nav className="md:hidden bg-primary/80">
+            <nav className="md:hidden bg-primary/80">
                 <div className="flex justify-around p-2">
                     {navItems.map((item) => (
                         <button
@@ -88,8 +82,12 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, o
                             onClick={() => onNavigate(item.id)}
                             className={`flex flex-col items-center space-y-1 w-full py-1 rounded-md text-sm font-medium transition-colors ${
                                 currentPage === item.id
-                                    ? 'bg-white/20 text-white'
-                                    : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                                    ? item.id === 'create'
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-white/20 text-white'
+                                    : item.id === 'create'
+                                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                                        : 'text-gray-300 hover:bg-white/10 hover:text-white'
                             }`}
                         >
                             <span dangerouslySetInnerHTML={{ __html: item.icon }} />
