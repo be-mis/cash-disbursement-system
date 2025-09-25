@@ -14,9 +14,9 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, onUserChange, users }) => {
     const navItems: { id: Page; label: string; icon: string }[] = [
         { id: 'dashboard', label: 'Dashboard', icon: ICONS.dashboard },
-        ...(currentUser.role === 'Employee' ? [{
-            id: 'create',
-            label: 'Create Request',
+        ...(currentUser.role !== 'CEO' ? [{ 
+            id: 'create' as Page, 
+            label: 'Create Request', 
             icon: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"/>
                 <line x1="12" y1="8" x2="12" y2="16"/>
@@ -55,7 +55,13 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, o
                                     }`}
                                 >
                                     <span dangerouslySetInnerHTML={{ __html: item.icon }} />
-                                    <span>{item.label}</span>
+                                    <span>
+                                        {item.label}
+                                        {/* Add indicator for non-employees */}
+                                        {item.id === 'create' && currentUser.role !== 'Employee' && (
+                                            <span className="ml-1 text-xs opacity-75">*</span>
+                                        )}
+                                    </span>
                                 </button>
                             ))}
                         </nav>
@@ -63,7 +69,12 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser, o
                     <div className="flex items-center space-x-4">
                          <div className="text-right">
                              <div className="text-sm font-medium text-white">{currentUser.name}</div>
-                             <div className="text-xs text-gray-300">{currentUser.role}</div>
+                             <div className="text-xs text-gray-300">
+                                {currentUser.role}
+                                {currentUser.role !== 'Employee' && (
+                                    <span className="ml-1 text-yellow-300">*Enhanced docs required</span>
+                                )}
+                             </div>
                          </div>
                          <Select
                             className="bg-primary text-white border-white/50 w-48"

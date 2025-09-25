@@ -98,176 +98,15 @@ const generateTimeline = (
     return timeline.reverse();
 };
 
-// Expanded mock data with all three request types
-const REQUESTS: Request[] = [
-    // Reimbursement Requests
-    {
-        id: 'REQ001',
-        requestType: 'REIMBURSEMENT',
-        employeeName: 'Alice Johnson',
-        employeeId: 1,
-        amount: 5000,
-        currency: 'PHP',
-        description: 'Office supplies for Q3 campaign',
-        category: 'Office Supplies',
-        status: 'PENDING_CEO',
-        priority: 'Medium',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-        approvers: [USERS[1], USERS[2], USERS[3]], // Manager, Finance, CEO
-        nextActionBy: ['CEO'],
-        timeline: generateTimeline('PENDING_CEO', 'REIMBURSEMENT', USERS[0], USERS[1], USERS[2], USERS[3]),
-        attachments: ['receipt-001.pdf', 'invoice-001.pdf'],
-        comments: 'Purchased materials for new marketing campaign launch',
-        expenseDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-        receipts: ['receipt-office-supplies-001.pdf'],
-        businessPurpose: 'Marketing campaign materials for Q3 product launch'
-    } as ReimbursementRequest,
-
-    {
-        id: 'REQ002',
-        requestType: 'REIMBURSEMENT',
-        employeeName: 'Emma Davis',
-        employeeId: 5,
-        amount: 2500,
-        currency: 'PHP',
-        description: 'Client lunch meeting expenses',
-        category: 'Meals',
-        status: 'APPROVED',
-        priority: 'Low',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-        approvers: [USERS[1], USERS[2], USERS[3]],
-        nextActionBy: ['Finance'],
-        timeline: generateTimeline('APPROVED', 'REIMBURSEMENT', USERS[4], USERS[1], USERS[2], USERS[3]),
-        attachments: ['receipt-lunch-002.pdf'],
-        expenseDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString(),
-        receipts: ['restaurant-receipt-002.pdf'],
-        businessPurpose: 'Client relationship building - potential contract discussion'
-    } as ReimbursementRequest,
-
-    // Cash Advance Requests
-    {
-        id: 'REQ003',
-        requestType: 'CASH_ADVANCE',
-        employeeName: 'Alice Johnson',
-        employeeId: 1,
-        amount: 15000,
-        currency: 'PHP',
-        description: 'Business trip to Manila for client meetings',
-        category: 'Travel',
-        status: 'PENDING_LIQUIDATION',
-        priority: 'High',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-        approvers: [USERS[1], USERS[2], USERS[3]],
-        nextActionBy: ['Employee'], // Waiting for liquidation
-        timeline: generateTimeline('PENDING_LIQUIDATION', 'CASH_ADVANCE', USERS[0], USERS[1], USERS[2], USERS[3]),
-        plannedExpenseDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-        estimatedAmount: 15000,
-        advancePurpose: 'Hotel, meals, and transportation for 3-day client meetings in Manila',
-        expectedLiquidationDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5).toISOString(),
-        liquidationId: 'REQ004' // Links to liquidation request
-    } as CashAdvanceRequest,
-
-    // Liquidation Request (connected to advance above)
-    {
-        id: 'REQ004',
-        requestType: 'LIQUIDATION',
-        employeeName: 'Alice Johnson',
-        employeeId: 1,
-        amount: 13500, // Actual amount spent
-        currency: 'PHP',
-        description: 'Liquidation for Manila business trip',
-        category: 'Travel',
-        status: 'PENDING_FINANCE',
-        priority: 'Medium',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-        approvers: [USERS[1], USERS[2]],
-        nextActionBy: ['Finance'],
-        timeline: generateTimeline('PENDING_FINANCE', 'LIQUIDATION', USERS[0], USERS[1], USERS[2], USERS[3]),
-        attachments: ['hotel-receipt.pdf', 'taxi-receipts.pdf', 'meal-receipts.pdf'],
-        advanceId: 'REQ003', // Links back to advance
-        advanceAmount: 15000,
-        actualAmount: 13500,
-        remainingAmount: 1500, // Amount to return
-        receipts: ['hotel-manila-receipt.pdf', 'grab-receipts.pdf', 'restaurant-receipts.pdf'],
-        liquidationSummary: 'Hotel: ₱8,000, Meals: ₱3,500, Transportation: ₱2,000. Returning ₱1,500 unused advance.'
-    } as LiquidationRequest,
-
-    // More sample requests
-    {
-        id: 'REQ005',
-        requestType: 'REIMBURSEMENT',
-        employeeName: 'Alice Johnson',
-        employeeId: 1,
-        amount: 3200,
-        currency: 'PHP',
-        description: 'Software subscription renewal',
-        category: 'Software',
-        status: 'REJECTED',
-        priority: 'Low',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8).toISOString(),
-        approvers: [USERS[1], USERS[2], USERS[3]],
-        nextActionBy: [],
-        timeline: generateTimeline('REJECTED', 'REIMBURSEMENT', USERS[0], USERS[1], USERS[2], USERS[3]),
-        expenseDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(),
-        receipts: ['software-invoice.pdf'],
-        businessPurpose: 'Design software renewal for marketing team'
-    } as ReimbursementRequest,
-
-    {
-        id: 'REQ006',
-        requestType: 'CASH_ADVANCE',
-        employeeName: 'Emma Davis',
-        employeeId: 5,
-        amount: 8000,
-        currency: 'PHP',
-        description: 'Conference attendance in Cebu',
-        category: 'Travel',
-        status: 'PENDING_VALIDATION',
-        priority: 'Medium',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-        approvers: [USERS[1]],
-        nextActionBy: ['Manager'],
-        timeline: generateTimeline('PENDING_VALIDATION', 'CASH_ADVANCE', USERS[4], USERS[1], USERS[2], USERS[3]),
-        plannedExpenseDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString(),
-        estimatedAmount: 8000,
-        advancePurpose: 'Sales conference registration, hotel, and meals for 2 days',
-        expectedLiquidationDate: new Date(Date.now() + 1000 * 60 * 60 * 24 * 21).toISOString()
-    } as CashAdvanceRequest,
-
-    {
-        id: 'REQ007',
-        requestType: 'REIMBURSEMENT',
-        employeeName: 'Emma Davis',
-        employeeId: 5,
-        amount: 4500,
-        currency: 'PHP',
-        description: 'Marketing materials printing',
-        category: 'Marketing',
-        status: 'PAID',
-        priority: 'Medium',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(),
-        approvers: [USERS[1], USERS[2], USERS[3]],
-        nextActionBy: [],
-        timeline: generateTimeline('PAID', 'REIMBURSEMENT', USERS[4], USERS[1], USERS[2], USERS[3]),
-        expenseDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 23).toISOString(),
-        receipts: ['printing-invoice.pdf'],
-        businessPurpose: 'Brochures and flyers for upcoming trade show'
-    } as ReimbursementRequest,
-];
+// Empty mock data
+const REQUESTS: Request[] = [];
 
 let requestsDB = [...REQUESTS];
 
 // Helper function to generate new request ID
 const generateRequestId = (): string => {
     const existingIds = requestsDB.map(r => parseInt(r.id.replace('REQ', '')));
-    const maxId = Math.max(...existingIds);
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
     return `REQ${String(maxId + 1).padStart(3, '0')}`;
 };
 
@@ -393,7 +232,7 @@ export const api = {
         return connected;
     },
 
-    // Create Reimbursement Request
+    // Create Reimbursement Request - Role-based workflow
     createReimbursementRequest: async (data: CreateReimbursementDto): Promise<Request> => {
         await new Promise(res => setTimeout(res, 500));
         
@@ -401,7 +240,47 @@ export const api = {
         if (!user) throw new Error('User not found');
         
         const manager = USERS.find(u => u.role === 'Manager');
-        if (!manager) throw new Error('Manager not found');
+        const finance = USERS.find(u => u.role === 'Finance');
+        const ceo = USERS.find(u => u.role === 'CEO');
+        
+        // Role-based approval workflow
+        let initialStatus: RequestStatus;
+        let nextActionBy: Role[];
+        let approvers: User[];
+        let timelineComment: string;
+        
+        switch (user.role) {
+            case 'Employee':
+                initialStatus = 'PENDING_VALIDATION';
+                nextActionBy = ['Manager'];
+                approvers = [manager!, finance!, ceo!];
+                timelineComment = 'Reimbursement request created by employee - awaiting manager validation.';
+                break;
+            
+            case 'Manager':
+                initialStatus = 'PENDING_FINANCE';
+                nextActionBy = ['Finance'];
+                approvers = [finance!, ceo!];
+                timelineComment = 'Manager reimbursement request created - manager validation skipped, forwarded to Finance.';
+                break;
+            
+            case 'Finance':
+                initialStatus = 'PENDING_CEO';
+                nextActionBy = ['CEO'];
+                approvers = [ceo!];
+                timelineComment = 'Finance reimbursement request created - forwarded directly to CEO for approval.';
+                break;
+            
+            case 'CEO':
+                initialStatus = 'APPROVED';
+                nextActionBy = ['Finance'];
+                approvers = [finance!];
+                timelineComment = 'CEO reimbursement request created - auto-approved, ready for payment processing.';
+                break;
+            
+            default:
+                throw new Error('Invalid user role');
+        }
 
         const newRequest: ReimbursementRequest = {
             id: generateRequestId(),
@@ -412,12 +291,12 @@ export const api = {
             currency: 'PHP',
             description: data.description,
             category: data.category,
-            status: 'PENDING_VALIDATION',
+            status: initialStatus,
             priority: data.priority,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            approvers: [manager],
-            nextActionBy: ['Manager'],
+            approvers: approvers,
+            nextActionBy: nextActionBy,
             timeline: [{
                 id: `timeline-${Date.now()}`,
                 stage: 'Request Submitted',
@@ -425,7 +304,7 @@ export const api = {
                 type: 'system',
                 actor: { id: user.id, name: user.name, role: user.role },
                 timestamp: new Date().toISOString(),
-                comment: 'Reimbursement request created by employee.'
+                comment: timelineComment
             }],
             attachments: data.attachments || [],
             expenseDate: data.expenseDate,
@@ -437,7 +316,7 @@ export const api = {
         return newRequest;
     },
 
-    // Create Cash Advance Request
+    // Create Cash Advance Request - Role-based workflow
     createCashAdvanceRequest: async (data: CreateCashAdvanceDto): Promise<Request> => {
         await new Promise(res => setTimeout(res, 500));
         
@@ -445,7 +324,47 @@ export const api = {
         if (!user) throw new Error('User not found');
         
         const manager = USERS.find(u => u.role === 'Manager');
-        if (!manager) throw new Error('Manager not found');
+        const finance = USERS.find(u => u.role === 'Finance');
+        const ceo = USERS.find(u => u.role === 'CEO');
+        
+        // Role-based approval workflow
+        let initialStatus: RequestStatus;
+        let nextActionBy: Role[];
+        let approvers: User[];
+        let timelineComment: string;
+        
+        switch (user.role) {
+            case 'Employee':
+                initialStatus = 'PENDING_VALIDATION';
+                nextActionBy = ['Manager'];
+                approvers = [manager!, finance!, ceo!];
+                timelineComment = 'Cash advance request created by employee - awaiting manager validation.';
+                break;
+            
+            case 'Manager':
+                initialStatus = 'PENDING_FINANCE';
+                nextActionBy = ['Finance'];
+                approvers = [finance!, ceo!];
+                timelineComment = 'Manager cash advance request created - manager validation skipped, forwarded to Finance.';
+                break;
+            
+            case 'Finance':
+                initialStatus = 'PENDING_CEO';
+                nextActionBy = ['CEO'];
+                approvers = [ceo!];
+                timelineComment = 'Finance cash advance request created - forwarded directly to CEO for approval.';
+                break;
+            
+            case 'CEO':
+                initialStatus = 'APPROVED';
+                nextActionBy = ['Finance'];
+                approvers = [finance!];
+                timelineComment = 'CEO cash advance request created - auto-approved, ready for payment processing.';
+                break;
+            
+            default:
+                throw new Error('Invalid user role');
+        }
 
         const newRequest: CashAdvanceRequest = {
             id: generateRequestId(),
@@ -456,12 +375,12 @@ export const api = {
             currency: 'PHP',
             description: data.description,
             category: data.category,
-            status: 'PENDING_VALIDATION',
+            status: initialStatus,
             priority: data.priority,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            approvers: [manager],
-            nextActionBy: ['Manager'],
+            approvers: approvers,
+            nextActionBy: nextActionBy,
             timeline: [{
                 id: `timeline-${Date.now()}`,
                 stage: 'Request Submitted',
@@ -469,7 +388,7 @@ export const api = {
                 type: 'system',
                 actor: { id: user.id, name: user.name, role: user.role },
                 timestamp: new Date().toISOString(),
-                comment: 'Cash advance request created by employee.'
+                comment: timelineComment
             }],
             attachments: [],
             plannedExpenseDate: data.plannedExpenseDate,

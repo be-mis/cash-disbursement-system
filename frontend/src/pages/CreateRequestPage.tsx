@@ -21,6 +21,9 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Check if user requires enhanced documentation (Manager or Finance)
+  const requiresEnhancedDocs = currentUser.role === 'Manager' || currentUser.role === 'Finance';
+
   // Form data for each request type
   const [reimbursementData, setReimbursementData] = useState<Partial<CreateReimbursementDto>>({
     employeeId: currentUser.id,
@@ -30,7 +33,12 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     expenseDate: '',
     businessPurpose: '',
     priority: 'Medium',
-    attachments: []
+    attachments: [],
+    // Enhanced fields for Manager/Finance
+    managerJustification: '',
+    budgetImpactAssessment: '',
+    alternativesSought: '',
+    complianceNotes: ''
   });
 
   const [advanceData, setAdvanceData] = useState<Partial<CreateCashAdvanceDto>>({
@@ -41,7 +49,12 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     plannedExpenseDate: '',
     advancePurpose: '',
     expectedLiquidationDate: '',
-    priority: 'Medium'
+    priority: 'Medium',
+    // Enhanced fields for Manager/Finance
+    managerJustification: '',
+    budgetImpactAssessment: '',
+    riskAssessment: '',
+    expectedROI: ''
   });
 
   const [liquidationData, setLiquidationData] = useState<Partial<CreateLiquidationDto>>({
@@ -49,7 +62,10 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     actualAmount: 0,
     description: '',
     liquidationSummary: '',
-    attachments: []
+    attachments: [],
+    // Enhanced fields for Manager/Finance
+    varianceExplanation: '',
+    lessonsLearned: ''
   });
 
   const categories: RequestCategory[] = [
@@ -86,6 +102,25 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
       if (!reimbursementData.businessPurpose?.trim()) {
         newErrors.businessPurpose = 'Business purpose is required';
       }
+
+      // Enhanced validation for Manager/Finance
+      if (requiresEnhancedDocs) {
+        if (!reimbursementData.managerJustification?.trim()) {
+          newErrors.managerJustification = 'Executive justification is required';
+        }
+        if (!reimbursementData.budgetImpactAssessment?.trim()) {
+          newErrors.budgetImpactAssessment = 'Budget impact assessment is required';
+        }
+        if (!reimbursementData.alternativesSought?.trim()) {
+          newErrors.alternativesSought = 'Documentation of alternatives sought is required';
+        }
+        if (reimbursementData.amount && reimbursementData.amount > 10000 && !reimbursementData.complianceNotes?.trim()) {
+          newErrors.complianceNotes = 'Compliance notes required for amounts over ₱10,000';
+        }
+        if (!reimbursementData.attachments || reimbursementData.attachments.length === 0) {
+          newErrors.attachments = 'Receipt/document upload is mandatory for executives';
+        }
+      }
     }
 
     if (selectedType === 'CASH_ADVANCE') {
@@ -109,6 +144,22 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           newErrors.expectedLiquidationDate = 'Liquidation date must be after planned expense date';
         }
       }
+
+      // Enhanced validation for Manager/Finance
+      if (requiresEnhancedDocs) {
+        if (!advanceData.managerJustification?.trim()) {
+          newErrors.managerJustification = 'Executive justification is required';
+        }
+        if (!advanceData.budgetImpactAssessment?.trim()) {
+          newErrors.budgetImpactAssessment = 'Budget impact assessment is required';
+        }
+        if (!advanceData.riskAssessment?.trim()) {
+          newErrors.riskAssessment = 'Risk assessment is required';
+        }
+        if (advanceData.estimatedAmount && advanceData.estimatedAmount > 25000 && !advanceData.expectedROI?.trim()) {
+          newErrors.expectedROI = 'Expected ROI justification required for advances over ₱25,000';
+        }
+      }
     }
 
     if (selectedType === 'LIQUIDATION') {
@@ -123,6 +174,25 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
       }
       if (!liquidationData.liquidationSummary?.trim()) {
         newErrors.liquidationSummary = 'Liquidation summary is required';
+      }
+
+      // Enhanced validation for Manager/Finance
+      if (requiresEnhancedDocs) {
+        const selectedAdvance = pendingAdvances.find(adv => adv.id === liquidationData.advanceId);
+        if (selectedAdvance && liquidationData.actualAmount) {
+          const variance = Math.abs(liquidationData.actualAmount - selectedAdvance.amount);
+          const variancePercentage = (variance / selectedAdvance.amount) * 100;
+          
+          if (variancePercentage > 10 && !liquidationData.varianceExplanation?.trim()) {
+            newErrors.varianceExplanation = 'Variance explanation required when actual differs by >10% from estimated';
+          }
+        }
+        if (!liquidationData.lessonsLearned?.trim()) {
+          newErrors.lessonsLearned = 'Lessons learned documentation is required';
+        }
+        if (!liquidationData.attachments || liquidationData.attachments.length === 0) {
+          newErrors.attachments = 'Receipt/document upload is mandatory for executives';
+        }
       }
     }
 
@@ -148,7 +218,11 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           expenseDate: '',
           businessPurpose: '',
           priority: 'Medium',
-          attachments: []
+          attachments: [],
+          managerJustification: '',
+          budgetImpactAssessment: '',
+          alternativesSought: '',
+          complianceNotes: ''
         });
       } else if (selectedType === 'CASH_ADVANCE') {
         await api.createCashAdvanceRequest(advanceData as CreateCashAdvanceDto);
@@ -160,7 +234,11 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           plannedExpenseDate: '',
           advancePurpose: '',
           expectedLiquidationDate: '',
-          priority: 'Medium'
+          priority: 'Medium',
+          managerJustification: '',
+          budgetImpactAssessment: '',
+          riskAssessment: '',
+          expectedROI: ''
         });
       } else if (selectedType === 'LIQUIDATION') {
         await api.createLiquidationRequest(liquidationData as CreateLiquidationDto);
@@ -169,7 +247,9 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           actualAmount: 0,
           description: '',
           liquidationSummary: '',
-          attachments: []
+          attachments: [],
+          varianceExplanation: '',
+          lessonsLearned: ''
         });
       }
       
@@ -184,8 +264,63 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     }
   };
 
+  const renderEnhancedDocumentationAlert = () => {
+    if (!requiresEnhancedDocs) return null;
+
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-4">
+        <div className="flex items-center">
+          <div className="text-amber-600 mr-3">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-amber-800">Enhanced Documentation Required</h3>
+            <p className="text-sm text-amber-700">
+              As a {currentUser.role}, you must provide additional justification and mandatory receipt uploads for accountability and compliance.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFileUpload = (
+    value: string[] | undefined,
+    onChange: (files: string[]) => void,
+    fieldName: string
+  ) => (
+    <div>
+      <Label htmlFor={fieldName}>
+        {requiresEnhancedDocs ? 'Receipt/Document Upload *' : 'Attachments (Optional)'}
+      </Label>
+      <Input
+        id={fieldName}
+        type="file"
+        multiple
+        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+        onChange={(e) => {
+          // File handling logic would go here
+          // For now, just showing the structure
+          const files = Array.from(e.target.files || []).map(f => f.name);
+          onChange(files);
+        }}
+        className={errors[fieldName] ? 'border-red-500' : ''}
+      />
+      {requiresEnhancedDocs && (
+        <p className="text-xs text-muted-foreground mt-1">
+          Mandatory for executives. Accepted: JPG, PNG, PDF, DOC, DOCX
+        </p>
+      )}
+      {errors[fieldName] && <p className="text-red-500 text-sm mt-1">{errors[fieldName]}</p>}
+    </div>
+  );
+
   const renderReimbursementForm = () => (
     <div className="space-y-4">
+      {renderEnhancedDocumentationAlert()}
+      
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="amount">Amount *</Label>
@@ -266,11 +401,82 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         />
         {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
       </div>
+
+      {/* Enhanced fields for Manager/Finance */}
+      {requiresEnhancedDocs && (
+        <>
+          <div className="border-t pt-4">
+            <h4 className="font-semibold text-gray-800 mb-3">Enhanced Documentation Required</h4>
+            
+            <div>
+              <Label htmlFor="managerJustification">Executive Justification *</Label>
+              <Textarea
+                id="managerJustification"
+                value={reimbursementData.managerJustification || ''}
+                onChange={(e) => setReimbursementData({...reimbursementData, managerJustification: e.target.value})}
+                placeholder="As an executive, provide detailed justification for why this expense was necessary and how it aligns with business objectives..."
+                rows={3}
+                className={errors.managerJustification ? 'border-red-500' : ''}
+              />
+              {errors.managerJustification && <p className="text-red-500 text-sm mt-1">{errors.managerJustification}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="budgetImpactAssessment">Budget Impact Assessment *</Label>
+              <Textarea
+                id="budgetImpactAssessment"
+                value={reimbursementData.budgetImpactAssessment || ''}
+                onChange={(e) => setReimbursementData({...reimbursementData, budgetImpactAssessment: e.target.value})}
+                placeholder="Assess the impact on departmental/company budget, including which budget line this affects..."
+                rows={2}
+                className={errors.budgetImpactAssessment ? 'border-red-500' : ''}
+              />
+              {errors.budgetImpactAssessment && <p className="text-red-500 text-sm mt-1">{errors.budgetImpactAssessment}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="alternativesSought">Alternatives Considered *</Label>
+              <Textarea
+                id="alternativesSought"
+                value={reimbursementData.alternativesSought || ''}
+                onChange={(e) => setReimbursementData({...reimbursementData, alternativesSought: e.target.value})}
+                placeholder="Document what alternative solutions or vendors were considered and why this option was chosen..."
+                rows={2}
+                className={errors.alternativesSought ? 'border-red-500' : ''}
+              />
+              {errors.alternativesSought && <p className="text-red-500 text-sm mt-1">{errors.alternativesSought}</p>}
+            </div>
+
+            {reimbursementData.amount && reimbursementData.amount > 10000 && (
+              <div>
+                <Label htmlFor="complianceNotes">Compliance Notes *</Label>
+                <Textarea
+                  id="complianceNotes"
+                  value={reimbursementData.complianceNotes || ''}
+                  onChange={(e) => setReimbursementData({...reimbursementData, complianceNotes: e.target.value})}
+                  placeholder="For high-value expenses, document compliance with company policies and any approvals obtained..."
+                  rows={2}
+                  className={errors.complianceNotes ? 'border-red-500' : ''}
+                />
+                {errors.complianceNotes && <p className="text-red-500 text-sm mt-1">{errors.complianceNotes}</p>}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {renderFileUpload(
+        reimbursementData.attachments,
+        (files) => setReimbursementData({...reimbursementData, attachments: files}),
+        'attachments'
+      )}
     </div>
   );
 
   const renderAdvanceForm = () => (
     <div className="space-y-4">
+      {renderEnhancedDocumentationAlert()}
+      
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="estimatedAmount">Estimated Amount *</Label>
@@ -363,6 +569,69 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         />
         {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
       </div>
+
+      {/* Enhanced fields for Manager/Finance */}
+      {requiresEnhancedDocs && (
+        <>
+          <div className="border-t pt-4">
+            <h4 className="font-semibold text-gray-800 mb-3">Enhanced Documentation Required</h4>
+            
+            <div>
+              <Label htmlFor="managerJustification">Executive Justification *</Label>
+              <Textarea
+                id="managerJustification"
+                value={advanceData.managerJustification || ''}
+                onChange={(e) => setAdvanceData({...advanceData, managerJustification: e.target.value})}
+                placeholder="Provide detailed justification for why this advance is necessary and how it supports business objectives..."
+                rows={3}
+                className={errors.managerJustification ? 'border-red-500' : ''}
+              />
+              {errors.managerJustification && <p className="text-red-500 text-sm mt-1">{errors.managerJustification}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="budgetImpactAssessment">Budget Impact Assessment *</Label>
+              <Textarea
+                id="budgetImpactAssessment"
+                value={advanceData.budgetImpactAssessment || ''}
+                onChange={(e) => setAdvanceData({...advanceData, budgetImpactAssessment: e.target.value})}
+                placeholder="Assess budget impact and cash flow implications of this advance..."
+                rows={2}
+                className={errors.budgetImpactAssessment ? 'border-red-500' : ''}
+              />
+              {errors.budgetImpactAssessment && <p className="text-red-500 text-sm mt-1">{errors.budgetImpactAssessment}</p>}
+            </div>
+
+            <div>
+              <Label htmlFor="riskAssessment">Risk Assessment *</Label>
+              <Textarea
+                id="riskAssessment"
+                value={advanceData.riskAssessment || ''}
+                onChange={(e) => setAdvanceData({...advanceData, riskAssessment: e.target.value})}
+                placeholder="Identify potential risks and mitigation strategies for this advance..."
+                rows={2}
+                className={errors.riskAssessment ? 'border-red-500' : ''}
+              />
+              {errors.riskAssessment && <p className="text-red-500 text-sm mt-1">{errors.riskAssessment}</p>}
+            </div>
+
+            {advanceData.estimatedAmount && advanceData.estimatedAmount > 25000 && (
+              <div>
+                <Label htmlFor="expectedROI">Expected ROI/Business Value *</Label>
+                <Textarea
+                  id="expectedROI"
+                  value={advanceData.expectedROI || ''}
+                  onChange={(e) => setAdvanceData({...advanceData, expectedROI: e.target.value})}
+                  placeholder="For high-value advances, document expected return on investment or business value..."
+                  rows={2}
+                  className={errors.expectedROI ? 'border-red-500' : ''}
+                />
+                {errors.expectedROI && <p className="text-red-500 text-sm mt-1">{errors.expectedROI}</p>}
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 
@@ -371,6 +640,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     
     return (
       <div className="space-y-4">
+        {renderEnhancedDocumentationAlert()}
+        
         <div>
           <Label htmlFor="advanceId">Select Advance to Liquidate *</Label>
           <select 
@@ -452,6 +723,59 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           />
           {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
         </div>
+
+        {/* Enhanced fields for Manager/Finance */}
+        {requiresEnhancedDocs && (
+          <>
+            <div className="border-t pt-4">
+              <h4 className="font-semibold text-gray-800 mb-3">Enhanced Documentation Required</h4>
+              
+              {selectedAdvance && liquidationData.actualAmount && (
+                (() => {
+                  const variance = Math.abs(liquidationData.actualAmount - selectedAdvance.amount);
+                  const variancePercentage = (variance / selectedAdvance.amount) * 100;
+                  
+                  return variancePercentage > 10 ? (
+                    <div>
+                      <Label htmlFor="varianceExplanation">Variance Explanation *</Label>
+                      <Textarea
+                        id="varianceExplanation"
+                        value={liquidationData.varianceExplanation || ''}
+                        onChange={(e) => setLiquidationData({...liquidationData, varianceExplanation: e.target.value})}
+                        placeholder="Explain why actual spending differed significantly from the estimated amount..."
+                        rows={3}
+                        className={errors.varianceExplanation ? 'border-red-500' : ''}
+                      />
+                      {errors.varianceExplanation && <p className="text-red-500 text-sm mt-1">{errors.varianceExplanation}</p>}
+                      <p className="text-sm text-amber-600 mt-1">
+                        <strong>Variance: {variancePercentage.toFixed(1)}%</strong> - Explanation required for variances over 10%
+                      </p>
+                    </div>
+                  ) : null;
+                })()
+              )}
+
+              <div>
+                <Label htmlFor="lessonsLearned">Lessons Learned *</Label>
+                <Textarea
+                  id="lessonsLearned"
+                  value={liquidationData.lessonsLearned || ''}
+                  onChange={(e) => setLiquidationData({...liquidationData, lessonsLearned: e.target.value})}
+                  placeholder="Document key insights and lessons learned from this expense that could improve future planning..."
+                  rows={3}
+                  className={errors.lessonsLearned ? 'border-red-500' : ''}
+                />
+                {errors.lessonsLearned && <p className="text-red-500 text-sm mt-1">{errors.lessonsLearned}</p>}
+              </div>
+            </div>
+          </>
+        )}
+
+        {renderFileUpload(
+          liquidationData.attachments,
+          (files) => setLiquidationData({...liquidationData, attachments: files}),
+          'attachments'
+        )}
       </div>
     );
   };
@@ -461,6 +785,11 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
       <Card>
         <CardHeader>
           <CardTitle>Create New Request</CardTitle>
+          {requiresEnhancedDocs && (
+            <div className="text-sm text-amber-700 bg-amber-50 p-2 rounded-md mt-2">
+              <strong>Enhanced Documentation Required:</strong> As a {currentUser.role}, you must provide additional justification and mandatory documentation for all requests.
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
@@ -475,6 +804,9 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
               <div className="text-center">
                 <p className="font-semibold">Reimbursement</p>
                 <p className="text-sm text-muted-foreground">Get money back for expenses you've already paid</p>
+                {requiresEnhancedDocs && (
+                  <p className="text-xs text-amber-600 mt-1">⚠️ Enhanced docs required</p>
+                )}
               </div>
             </Button>
 
@@ -489,6 +821,9 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
               <div className="text-center">
                 <p className="font-semibold">Cash Advance</p>
                 <p className="text-sm text-muted-foreground">Request money upfront for upcoming expenses</p>
+                {requiresEnhancedDocs && (
+                  <p className="text-xs text-amber-600 mt-1">⚠️ Enhanced docs required</p>
+                )}
               </div>
             </Button>
 
@@ -507,6 +842,9 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
                   Account for advance money you've received
                   {pendingAdvances.length === 0 && " (No advances to liquidate)"}
                 </p>
+                {requiresEnhancedDocs && pendingAdvances.length > 0 && (
+                  <p className="text-xs text-amber-600 mt-1">⚠️ Enhanced docs required</p>
+                )}
               </div>
             </Button>
           </div>
@@ -518,11 +856,14 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           <DialogTitle>Create {REQUEST_TYPE_LABELS[selectedType]} Request</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
             <div className="space-y-4">
               <div className="bg-gray-50 p-3 rounded-md">
                 <p className="text-sm text-muted-foreground">
                   <strong>Submitting as:</strong> {currentUser.name} ({currentUser.role})
+                  {requiresEnhancedDocs && (
+                    <span className="ml-2 text-amber-600 font-medium">• Enhanced Documentation Required</span>
+                  )}
                 </p>
               </div>
 
