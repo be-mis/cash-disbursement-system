@@ -1,174 +1,146 @@
-// Fix: Added full content for services/api.ts
-import { User, Request, Role, RequestStatus, TimelineEvent } from '../types';
+import { User, Request, Role, RequestStatus, TimelineEvent, RequestType, ReimbursementRequest, CashAdvanceRequest, LiquidationRequest, Priority, CreateReimbursementDto, CreateCashAdvanceDto, CreateLiquidationDto } from '../types/types';
 
 const USERS: User[] = [
-    { id: 1, name: 'Alice (Employee)', role: 'Employee' },
-    { id: 2, name: 'Bob (Manager)', role: 'Manager' },
-    { id: 3, name: 'Charlie (Finance)', role: 'Finance' },
-    { id: 4, name: 'Diana (CEO)', role: 'CEO' },
+    { id: 1, name: 'Alice Johnson', role: 'Employee', email: 'alice.johnson@company.com', department: 'Marketing' },
+    { id: 2, name: 'Bob Chen', role: 'Manager', email: 'bob.chen@company.com', department: 'Operations' },
+    { id: 3, name: 'Charlie Rodriguez', role: 'Finance', email: 'charlie.rodriguez@company.com', department: 'Finance' },
+    { id: 4, name: 'Diana Park', role: 'CEO', email: 'diana.park@company.com', department: 'Executive' },
+    { id: 5, name: 'Emma Davis', role: 'Employee', email: 'emma.davis@company.com', department: 'Sales' },
+    { id: 6, name: 'Frank Wilson', role: 'Manager', email: 'frank.wilson@company.com', department: 'IT' },
 ];
 
-const generateTimeline = (status: RequestStatus, employee: User, manager: User, finance: User, ceo: User): TimelineEvent[] => {
+const generateTimeline = (
+    status: RequestStatus, 
+    requestType: RequestType,
+    employee: User, 
+    manager: User, 
+    finance: User, 
+    ceo: User
+): TimelineEvent[] => {
     const timeline: TimelineEvent[] = [
         {
+            id: `timeline-${Date.now()}-1`,
             stage: 'Request Submitted',
             decision: 'submitted',
             type: 'system',
-            actor: employee,
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-            comment: 'Request created by employee.',
+            actor: { id: employee.id, name: employee.name, role: employee.role },
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
+            comment: `${requestType.toLowerCase().replace('_', ' ')} request created by employee.`,
         }
     ];
 
-    if (status !== 'PENDING_VALIDATION') {
+    // Manager validation (first step in new workflow)
+    if (!['PENDING_VALIDATION'].includes(status)) {
         timeline.push({
-            stage: 'Validation',
+            id: `timeline-${Date.now()}-2`,
+            stage: 'Manager Validation',
             decision: 'validated',
             type: 'user',
-            actor: manager,
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-            comment: 'Details look correct.',
+            actor: { id: manager.id, name: manager.name, role: manager.role },
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+            comment: 'Details validated and forwarded to Finance.',
         });
     }
 
-    if (status === 'APPROVED' || status === 'REJECTED' || status === 'PROCESSING_PAYMENT' || status === 'PAID') {
+    // Finance review (second step)
+    if (!['PENDING_VALIDATION', 'PENDING_FINANCE'].includes(status)) {
+        timeline.push({
+            id: `timeline-${Date.now()}-3`,
+            stage: 'Finance Review',
+            decision: 'approved',
+            type: 'user',
+            actor: { id: finance.id, name: finance.name, role: finance.role },
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
+            comment: 'Budget approved, forwarding to CEO for final approval.',
+        });
+    }
+
+    // CEO approval (third step for high amounts)
+    if (['APPROVED', 'REJECTED', 'PROCESSING_PAYMENT', 'PAID'].includes(status)) {
         const isApproved = status !== 'REJECTED';
         timeline.push({
-            stage: 'Approval',
+            id: `timeline-${Date.now()}-4`,
+            stage: 'CEO Approval',
             decision: isApproved ? 'approved' : 'rejected',
             type: 'user',
-            actor: ceo,
+            actor: { id: ceo.id, name: ceo.name, role: ceo.role },
             timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-            comment: isApproved ? 'Approved for payment.' : 'This expense is not covered.',
+            comment: isApproved ? 'Final approval granted for payment.' : 'Request rejected - not aligned with budget priorities.',
         });
     }
 
-    if (status === 'PROCESSING_PAYMENT' || status === 'PAID') {
-         timeline.push({
+    // Payment processing
+    if (['PROCESSING_PAYMENT', 'PAID'].includes(status)) {
+        timeline.push({
+            id: `timeline-${Date.now()}-5`,
             stage: 'Payment Processing',
             decision: 'released',
             type: 'user',
-            actor: finance,
+            actor: { id: finance.id, name: finance.name, role: finance.role },
             timestamp: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-            comment: 'Payment has been processed.',
+            comment: 'Payment processing initiated.',
         });
     }
     
+    // Payment completed
     if (status === 'PAID') {
         timeline.push({
-           stage: 'Paid',
-           decision: 'paid',
-           type: 'system',
-           actor: { name: 'System', role: 'Finance' },
-           timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(),
-           comment: 'Funds have been transferred.',
-       });
-   }
+            id: `timeline-${Date.now()}-6`,
+            stage: 'Payment Completed',
+            decision: 'released',
+            type: 'system',
+            actor: { id: 0, name: 'System', role: 'Finance' },
+            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+            comment: 'Funds transferred successfully.',
+        });
+    }
    
     return timeline.reverse();
 };
 
-const REQUESTS: Request[] = [
-    {
-        id: 'REQ001',
-        employeeName: 'Alice (Employee)',
-        employeeId: 1,
-        amount: 5000,
-        currency: 'PHP',
-        description: 'Office supplies for Q3',
-        category: 'Office Supplies',
-        status: 'PENDING_APPROVAL',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-        approvers: [USERS[1], USERS[3]],
-        nextActionBy: ['CEO'],
-        timeline: generateTimeline('PENDING_APPROVAL', USERS[0], USERS[1], USERS[2], USERS[3]),
-    },
-    {
-        id: 'REQ002',
-        employeeName: 'Alice (Employee)',
-        employeeId: 1,
-        amount: 25000,
-        currency: 'PHP',
-        description: 'Client dinner meeting',
-        category: 'Travel & Entertainment',
-        status: 'APPROVED',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-        approvers: [USERS[1], USERS[3]],
-        nextActionBy: ['Finance'],
-        timeline: generateTimeline('APPROVED', USERS[0], USERS[1], USERS[2], USERS[3]),
-    },
-    {
-        id: 'REQ003',
-        employeeName: 'Alice (Employee)',
-        employeeId: 1,
-        amount: 1200,
-        currency: 'PHP',
-        description: 'Software subscription renewal',
-        category: 'Software',
-        status: 'REJECTED',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
-        approvers: [USERS[1], USERS[3]],
-        nextActionBy: [],
-        timeline: generateTimeline('REJECTED', USERS[0], USERS[1], USERS[2], USERS[3]),
-    },
-    {
-        id: 'REQ004',
-        employeeName: 'Another Employee',
-        employeeId: 5, // A different employee
-        amount: 7800,
-        currency: 'PHP',
-        description: 'Team lunch for project completion',
-        category: 'Team Building',
-        status: 'PAID',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(),
-        approvers: [USERS[1], USERS[3]],
-        nextActionBy: [],
-        timeline: generateTimeline('PAID', USERS[0], USERS[1], USERS[2], USERS[3]),
-    },
-     {
-        id: 'REQ005',
-        employeeName: 'Alice (Employee)',
-        employeeId: 1,
-        amount: 3000,
-        currency: 'PHP',
-        description: 'Marketing materials printing',
-        category: 'Marketing',
-        status: 'PENDING_VALIDATION',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
-        approvers: [USERS[1]],
-        nextActionBy: ['Manager'],
-        timeline: generateTimeline('PENDING_VALIDATION', USERS[0], USERS[1], USERS[2], USERS[3]),
-    },
-];
+// Empty mock data
+const REQUESTS: Request[] = [];
 
 let requestsDB = [...REQUESTS];
+
+// Helper function to generate new request ID
+const generateRequestId = (): string => {
+    const existingIds = requestsDB.map(r => parseInt(r.id.replace('REQ', '')));
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    return `REQ${String(maxId + 1).padStart(3, '0')}`;
+};
 
 export const api = {
     getUsers: async (): Promise<User[]> => {
         await new Promise(res => setTimeout(res, 200));
         return USERS;
     },
+    
     getRequests: async (): Promise<Request[]> => {
         await new Promise(res => setTimeout(res, 500));
         return requestsDB;
     },
+    
     getRequestsForUser: async (user: User): Promise<Request[]> => {
         await new Promise(res => setTimeout(res, 500));
         if (user.role === 'Employee') {
             return requestsDB.filter(r => r.employeeId === user.id);
         }
+        // Managers, Finance, and CEO can see all requests
         return requestsDB;
     },
+    
     getInboxForUser: async (user: User): Promise<Request[]> => {
         await new Promise(res => setTimeout(res, 500));
         return requestsDB.filter(r => r.nextActionBy.includes(user.role));
     },
-    updateRequestStatus: async (requestId: string, newStatus: RequestStatus, user: User, comment: string): Promise<Request> => {
+    
+    updateRequestStatus: async (
+        requestId: string, 
+        newStatus: RequestStatus, 
+        user: User, 
+        comment: string
+    ): Promise<Request> => {
         await new Promise(res => setTimeout(res, 300));
         const requestIndex = requestsDB.findIndex(r => r.id === requestId);
         if (requestIndex === -1) {
@@ -179,22 +151,28 @@ export const api = {
         
         let nextActionBy: Role[] = [];
         let stage = '';
-        let decision = '';
+        let decision: any = '';
 
+        // Updated workflow: Employee → Manager → Finance → CEO → Payment
         switch(newStatus) {
-            case 'PENDING_APPROVAL':
-                nextActionBy = ['CEO'];
-                stage = 'Validation';
+            case 'PENDING_FINANCE':
+                nextActionBy = ['Finance'];
+                stage = 'Manager Validation';
                 decision = 'validated';
+                break;
+            case 'PENDING_CEO':
+                nextActionBy = ['CEO'];
+                stage = 'Finance Review';
+                decision = 'approved';
                 break;
             case 'APPROVED':
                 nextActionBy = ['Finance'];
-                stage = 'Approval';
+                stage = 'CEO Approval';
                 decision = 'approved';
                 break;
             case 'REJECTED':
                 nextActionBy = [];
-                stage = 'Approval';
+                stage = 'Rejection';
                 decision = 'rejected';
                 break;
             case 'PROCESSING_PAYMENT':
@@ -203,17 +181,18 @@ export const api = {
                 decision = 'released';
                 break;
             case 'PAID':
-                 nextActionBy = [];
-                 stage = 'Paid';
-                 decision = 'paid';
-                 break;
+                nextActionBy = [];
+                stage = 'Payment Completed';
+                decision = 'released';
+                break;
         }
         
         const newTimelineEvent: TimelineEvent = {
+            id: `timeline-${Date.now()}`,
             stage,
             decision,
             type: 'user',
-            actor: { name: user.name, role: user.role },
+            actor: { id: user.id, name: user.name, role: user.role },
             timestamp: new Date().toISOString(),
             comment
         };
@@ -228,5 +207,268 @@ export const api = {
 
         requestsDB[requestIndex] = updatedRequest;
         return updatedRequest;
+    },
+
+    // New method to get connected requests (advance + liquidation)
+    getConnectedRequests: async (requestId: string): Promise<Request[]> => {
+        await new Promise(res => setTimeout(res, 300));
+        const request = requestsDB.find(r => r.id === requestId);
+        if (!request) return [];
+
+        const connected: Request[] = [request];
+        
+        // If it's an advance, find its liquidation
+        if (request.requestType === 'CASH_ADVANCE' && (request as CashAdvanceRequest).liquidationId) {
+            const liquidation = requestsDB.find(r => r.id === (request as CashAdvanceRequest).liquidationId);
+            if (liquidation) connected.push(liquidation);
+        }
+        
+        // If it's a liquidation, find its advance
+        if (request.requestType === 'LIQUIDATION') {
+            const advance = requestsDB.find(r => r.id === (request as LiquidationRequest).advanceId);
+            if (advance) connected.push(advance);
+        }
+        
+        return connected;
+    },
+
+    // Create Reimbursement Request - Role-based workflow
+    createReimbursementRequest: async (data: CreateReimbursementDto): Promise<Request> => {
+        await new Promise(res => setTimeout(res, 500));
+        
+        const user = USERS.find(u => u.id === data.employeeId);
+        if (!user) throw new Error('User not found');
+        
+        const manager = USERS.find(u => u.role === 'Manager');
+        const finance = USERS.find(u => u.role === 'Finance');
+        const ceo = USERS.find(u => u.role === 'CEO');
+        
+        // Role-based approval workflow
+        let initialStatus: RequestStatus;
+        let nextActionBy: Role[];
+        let approvers: User[];
+        let timelineComment: string;
+        
+        switch (user.role) {
+            case 'Employee':
+                initialStatus = 'PENDING_VALIDATION';
+                nextActionBy = ['Manager'];
+                approvers = [manager!, finance!, ceo!];
+                timelineComment = 'Reimbursement request created by employee - awaiting manager validation.';
+                break;
+            
+            case 'Manager':
+                initialStatus = 'PENDING_FINANCE';
+                nextActionBy = ['Finance'];
+                approvers = [finance!, ceo!];
+                timelineComment = 'Manager reimbursement request created - manager validation skipped, forwarded to Finance.';
+                break;
+            
+            case 'Finance':
+                initialStatus = 'PENDING_CEO';
+                nextActionBy = ['CEO'];
+                approvers = [ceo!];
+                timelineComment = 'Finance reimbursement request created - forwarded directly to CEO for approval.';
+                break;
+            
+            case 'CEO':
+                initialStatus = 'APPROVED';
+                nextActionBy = ['Finance'];
+                approvers = [finance!];
+                timelineComment = 'CEO reimbursement request created - auto-approved, ready for payment processing.';
+                break;
+            
+            default:
+                throw new Error('Invalid user role');
+        }
+
+        const newRequest: ReimbursementRequest = {
+            id: generateRequestId(),
+            requestType: 'REIMBURSEMENT',
+            employeeName: user.name,
+            employeeId: data.employeeId,
+            amount: data.amount,
+            currency: 'PHP',
+            description: data.description,
+            category: data.category,
+            status: initialStatus,
+            priority: data.priority,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            approvers: approvers,
+            nextActionBy: nextActionBy,
+            timeline: [{
+                id: `timeline-${Date.now()}`,
+                stage: 'Request Submitted',
+                decision: 'submitted',
+                type: 'system',
+                actor: { id: user.id, name: user.name, role: user.role },
+                timestamp: new Date().toISOString(),
+                comment: timelineComment
+            }],
+            attachments: data.attachments || [],
+            expenseDate: data.expenseDate,
+            receipts: [], // Will be populated with actual receipts
+            businessPurpose: data.businessPurpose
+        };
+
+        requestsDB.push(newRequest);
+        return newRequest;
+    },
+
+    // Create Cash Advance Request - Role-based workflow
+    createCashAdvanceRequest: async (data: CreateCashAdvanceDto): Promise<Request> => {
+        await new Promise(res => setTimeout(res, 500));
+        
+        const user = USERS.find(u => u.id === data.employeeId);
+        if (!user) throw new Error('User not found');
+        
+        const manager = USERS.find(u => u.role === 'Manager');
+        const finance = USERS.find(u => u.role === 'Finance');
+        const ceo = USERS.find(u => u.role === 'CEO');
+        
+        // Role-based approval workflow
+        let initialStatus: RequestStatus;
+        let nextActionBy: Role[];
+        let approvers: User[];
+        let timelineComment: string;
+        
+        switch (user.role) {
+            case 'Employee':
+                initialStatus = 'PENDING_VALIDATION';
+                nextActionBy = ['Manager'];
+                approvers = [manager!, finance!, ceo!];
+                timelineComment = 'Cash advance request created by employee - awaiting manager validation.';
+                break;
+            
+            case 'Manager':
+                initialStatus = 'PENDING_FINANCE';
+                nextActionBy = ['Finance'];
+                approvers = [finance!, ceo!];
+                timelineComment = 'Manager cash advance request created - manager validation skipped, forwarded to Finance.';
+                break;
+            
+            case 'Finance':
+                initialStatus = 'PENDING_CEO';
+                nextActionBy = ['CEO'];
+                approvers = [ceo!];
+                timelineComment = 'Finance cash advance request created - forwarded directly to CEO for approval.';
+                break;
+            
+            case 'CEO':
+                initialStatus = 'APPROVED';
+                nextActionBy = ['Finance'];
+                approvers = [finance!];
+                timelineComment = 'CEO cash advance request created - auto-approved, ready for payment processing.';
+                break;
+            
+            default:
+                throw new Error('Invalid user role');
+        }
+
+        const newRequest: CashAdvanceRequest = {
+            id: generateRequestId(),
+            requestType: 'CASH_ADVANCE',
+            employeeName: user.name,
+            employeeId: data.employeeId,
+            amount: data.estimatedAmount,
+            currency: 'PHP',
+            description: data.description,
+            category: data.category,
+            status: initialStatus,
+            priority: data.priority,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            approvers: approvers,
+            nextActionBy: nextActionBy,
+            timeline: [{
+                id: `timeline-${Date.now()}`,
+                stage: 'Request Submitted',
+                decision: 'submitted',
+                type: 'system',
+                actor: { id: user.id, name: user.name, role: user.role },
+                timestamp: new Date().toISOString(),
+                comment: timelineComment
+            }],
+            attachments: [],
+            plannedExpenseDate: data.plannedExpenseDate,
+            estimatedAmount: data.estimatedAmount,
+            advancePurpose: data.advancePurpose,
+            expectedLiquidationDate: data.expectedLiquidationDate
+        };
+
+        requestsDB.push(newRequest);
+        return newRequest;
+    },
+
+    // Create Liquidation Request
+    createLiquidationRequest: async (data: CreateLiquidationDto): Promise<Request> => {
+        await new Promise(res => setTimeout(res, 500));
+        
+        const advance = requestsDB.find(r => r.id === data.advanceId && r.requestType === 'CASH_ADVANCE') as CashAdvanceRequest;
+        if (!advance) throw new Error('Advance request not found');
+        
+        const user = USERS.find(u => u.id === advance.employeeId);
+        if (!user) throw new Error('User not found');
+        
+        const finance = USERS.find(u => u.role === 'Finance');
+        if (!finance) throw new Error('Finance user not found');
+
+        const remainingAmount = Math.max(0, advance.amount - data.actualAmount);
+
+        const newRequest: LiquidationRequest = {
+            id: generateRequestId(),
+            requestType: 'LIQUIDATION',
+            employeeName: user.name,
+            employeeId: advance.employeeId,
+            amount: data.actualAmount,
+            currency: 'PHP',
+            description: data.description,
+            category: advance.category,
+            status: 'PENDING_FINANCE', // Liquidations go directly to finance
+            priority: 'Medium',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            approvers: [finance],
+            nextActionBy: ['Finance'],
+            timeline: [{
+                id: `timeline-${Date.now()}`,
+                stage: 'Request Submitted',
+                decision: 'submitted',
+                type: 'system',
+                actor: { id: user.id, name: user.name, role: user.role },
+                timestamp: new Date().toISOString(),
+                comment: 'Liquidation request created by employee.'
+            }],
+            attachments: data.attachments,
+            advanceId: data.advanceId,
+            advanceAmount: advance.amount,
+            actualAmount: data.actualAmount,
+            remainingAmount: remainingAmount,
+            receipts: data.attachments,
+            liquidationSummary: data.liquidationSummary
+        };
+
+        // Update the advance request to link to liquidation and change status
+        const advanceIndex = requestsDB.findIndex(r => r.id === data.advanceId);
+        if (advanceIndex !== -1) {
+            (requestsDB[advanceIndex] as CashAdvanceRequest).liquidationId = newRequest.id;
+            // Advance status can remain as PENDING_LIQUIDATION or change to a "liquidation submitted" status
+        }
+
+        requestsDB.push(newRequest);
+        return newRequest;
+    },
+
+    // Get pending advances for liquidation (for current user)
+    getPendingAdvancesForUser: async (userId: number): Promise<CashAdvanceRequest[]> => {
+        await new Promise(res => setTimeout(res, 300));
+        
+        return requestsDB.filter(r => 
+            r.requestType === 'CASH_ADVANCE' && 
+            r.employeeId === userId && 
+            r.status === 'PENDING_LIQUIDATION' &&
+            !(r as CashAdvanceRequest).liquidationId // No liquidation submitted yet
+        ) as CashAdvanceRequest[];
     }
 };
