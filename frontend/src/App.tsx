@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AuthenticatedApp from './components/AuthenticatedApp';
 import Header from './components/Header';
 import DashboardPage from './pages/DashboardPage';
 import RequestsPage from './pages/RequestsPage';
@@ -8,9 +9,16 @@ import { Page, User, Request } from './types/types';
 import { api } from './services/api';
 
 const App: React.FC = () => {
+    return (
+        <AuthenticatedApp>
+            {(user) => <AuthenticatedContent currentUser={user} />}
+        </AuthenticatedApp>
+    );
+};
+
+// Separate component for the authenticated content
+const AuthenticatedContent: React.FC<{ currentUser: User }> = ({ currentUser }) => {
     const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-    const [users, setUsers] = useState<User[]>([]);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [requests, setRequests] = useState<Request[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -19,14 +27,7 @@ const App: React.FC = () => {
         try {
             setIsLoading(true);
             setError(null);
-            const [usersData, requestsData] = await Promise.all([
-                api.getUsers(),
-                api.getRequests()
-            ]);
-            setUsers(usersData);
-            if (!currentUser && usersData.length > 0) {
-                setCurrentUser(usersData[0]);
-            }
+            const requestsData = await api.getRequests();
             setRequests(requestsData);
         } catch (err) {
             setError('Failed to fetch data.');
@@ -38,19 +39,9 @@ const App: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [currentUser]); // Refetch when user changes (though this won't happen much with auth)
 
-    const handleUserChange = (userId: number) => {
-        const user = users.find(u => u.id === userId);
-        if (user) {
-            setCurrentUser(user);
-            setCurrentPage('dashboard'); // Reset to dashboard on user switch
-        }
-    };
-    
     const handleRequestUpdate = async () => {
-        // This function will be passed down to child components
-        // to trigger a data refresh after an action.
         try {
             setIsLoading(true);
             const requestsData = await api.getRequests();
@@ -61,11 +52,9 @@ const App: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    }
+    };
 
     const renderPage = () => {
-        if (!currentUser) return <div className="p-8 text-center">Please select a user.</div>;
-        
         switch (currentPage) {
             case 'dashboard':
                 return <DashboardPage currentUser={currentUser} requests={requests} />;
@@ -80,24 +69,15 @@ const App: React.FC = () => {
         }
     };
 
-    if (!currentUser) {
-        return (
-            <div className="flex items-center justify-center h-screen bg-gray-100">
-                <div className="text-center">
-                    <p className="text-xl">Loading application...</p>
-                </div>
-            </div>
-        )
-    }
-
     return (
         <div className="min-h-screen bg-gray-50 text-gray-800">
             <Header
                 currentPage={currentPage}
                 onNavigate={setCurrentPage}
                 currentUser={currentUser}
-                onUserChange={handleUserChange}
-                users={users}
+                // Remove user switching props - no longer needed with auth
+                onUserChange={() => {}} // Placeholder - will be removed from Header
+                users={[]} // Empty - will be removed from Header
             />
             <main className="container mx-auto p-4 sm:p-6 lg:p-8">
                 {isLoading && <div className="text-center p-8">Loading data...</div>}
