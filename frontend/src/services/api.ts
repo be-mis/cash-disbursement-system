@@ -55,6 +55,19 @@ const generateTimeline = (
         });
     }
 
+    // Liquidation approved by Finance
+    if (status === 'APPROVED' && requestType === 'LIQUIDATION') {
+        timeline.push({
+            id: `timeline-${Date.now()}-5`,
+            stage: 'Finance Approval',
+            decision: 'approved',
+            type: 'user',
+            actor: { id: finance.id, name: finance.name, role: finance.role },
+            timestamp: new Date().toISOString(),
+            comment: 'Liquidation approved by Finance. Forwarding to CEO for final approval.',
+        });
+    }
+
     // CEO approval (third step for high amounts)
     if (['APPROVED', 'REJECTED', 'PROCESSING_PAYMENT', 'PAID'].includes(status)) {
         const isApproved = status !== 'REJECTED';
@@ -166,9 +179,17 @@ export const api = {
                 decision = 'approved';
                 break;
             case 'APPROVED':
-                nextActionBy = ['Finance'];
-                stage = 'CEO Approval';
-                decision = 'approved';
+                // For LIQUIDATION: After Finance approves, send to CEO
+                if (oldRequest.requestType === 'LIQUIDATION') {
+                    nextActionBy = ['CEO'];
+                    stage = 'CEO Approval';
+                    decision = 'approved';
+                } else {
+                    // For REIMBURSEMENT/CASH_ADVANCE: Ready for payment
+                    nextActionBy = ['Finance'];
+                    stage = 'Approved';
+                    decision = 'approved';
+                }
                 break;
             case 'REJECTED':
                 nextActionBy = [];
@@ -176,14 +197,26 @@ export const api = {
                 decision = 'rejected';
                 break;
             case 'PROCESSING_PAYMENT':
-                nextActionBy = [];
-                stage = 'Payment Processing';
-                decision = 'released';
+                if (oldRequest.requestType === 'CASH_ADVANCE') {
+                    nextActionBy = [];
+                    stage = 'Ready for Liquidation';
+                    decision = 'released';
+                    newStatus = 'PENDING_LIQUIDATION'; // Override for cash advances
+                } else {
+                    nextActionBy = [];
+                    stage = 'Payment Processing';
+                    decision = 'released';
+                }
                 break;
             case 'PAID':
                 nextActionBy = [];
                 stage = 'Payment Completed';
                 decision = 'released';
+                break;
+            default:
+                nextActionBy = [];
+                stage = 'Unknown';
+                decision = 'unknown';
                 break;
         }
         
@@ -199,7 +232,9 @@ export const api = {
         
         const updatedRequest = {
             ...oldRequest,
-            status: newStatus,
+            status: oldRequest.requestType === 'CASH_ADVANCE' && newStatus === 'PROCESSING_PAYMENT' 
+                ? 'PENDING_LIQUIDATION' 
+                : newStatus,
             updatedAt: new Date().toISOString(),
             timeline: [newTimelineEvent, ...oldRequest.timeline],
             nextActionBy: nextActionBy
@@ -464,11 +499,13 @@ export const api = {
     getPendingAdvancesForUser: async (userId: number): Promise<CashAdvanceRequest[]> => {
         await new Promise(res => setTimeout(res, 300));
         
-        return requestsDB.filter(r => 
+        const filtered = requestsDB.filter(r => 
             r.requestType === 'CASH_ADVANCE' && 
             r.employeeId === userId && 
-            r.status === 'PENDING_LIQUIDATION' &&
-            !(r as CashAdvanceRequest).liquidationId // No liquidation submitted yet
-        ) as CashAdvanceRequest[];
+            r.status === 'PENDING_LIQUIDATION'
+        );
+        
+        console.log('Filtered advances for user', userId, ':', filtered);
+        return filtered as CashAdvanceRequest[];
     }
 };

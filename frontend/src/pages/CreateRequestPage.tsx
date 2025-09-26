@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RequestType, RequestCategory, Priority, CreateReimbursementDto, CreateCashAdvanceDto, CreateLiquidationDto, User, CashAdvanceRequest } from '../types/types';
 import { api } from '../services/api';
 import { Card, CardHeader, CardTitle, CardContent, Button, Dialog, DialogHeader, DialogTitle, DialogContent, DialogFooter, Input, Textarea, Label, Select } from '../components/ui';
@@ -8,18 +8,45 @@ import { formatPeso } from '../utils/formatters';
 interface RequestFormProps {
   currentUser: User;
   onRequestCreated: () => void;
-  pendingAdvances?: CashAdvanceRequest[];
+  // ✅ REMOVED: pendingAdvances prop — now fetched internally
 }
 
 const RequestCreationForms: React.FC<RequestFormProps> = ({ 
   currentUser, 
-  onRequestCreated, 
-  pendingAdvances = [] 
+  onRequestCreated,
 }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<RequestType>('REIMBURSEMENT');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // ✅ NEW: Local state for pending advances
+  const [pendingAdvances, setPendingAdvances] = useState<CashAdvanceRequest[]>([]);
+  const [loadingAdvances, setLoadingAdvances] = useState(true);
+
+  // ✅ NEW: Fetch pending advances whenever needed
+  useEffect(() => {
+    const fetchPendingAdvances = async () => {
+      if (currentUser.role === 'Employee' || currentUser.role === 'Manager') {
+        try {
+          const advances = await api.getPendingAdvancesForUser(currentUser.id);
+          setPendingAdvances(advances);
+        } catch (error) {
+          console.error('Failed to fetch pending advances:', error);
+          setPendingAdvances([]);
+        } finally {
+          setLoadingAdvances(false);
+        }
+      } else {
+        // Non-employees (Finance, CEO) shouldn't see liquidation option anyway
+        setPendingAdvances([]);
+        setLoadingAdvances(false);
+      }
+    };
+
+    // Fetch on mount and whenever user or form state changes
+    fetchPendingAdvances();
+  }, [currentUser.id, isFormOpen, selectedType]);
 
   // Check if user requires enhanced documentation (Manager or Finance)
   const requiresEnhancedDocs = currentUser.role === 'Manager' || currentUser.role === 'Finance';
@@ -84,6 +111,18 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
   const closeForm = () => {
     setIsFormOpen(false);
     setErrors({});
+    // ✅ Optional: Reset liquidation data when closing
+    if (selectedType === 'LIQUIDATION') {
+      setLiquidationData({
+        advanceId: '',
+        actualAmount: 0,
+        description: '',
+        liquidationSummary: '',
+        attachments: [],
+        varianceExplanation: '',
+        lessonsLearned: ''
+      });
+    }
   };
 
   const validateForm = (): boolean => {
@@ -103,7 +142,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         newErrors.businessPurpose = 'Business purpose is required';
       }
 
-      // Enhanced validation for Manager/Finance
       if (requiresEnhancedDocs) {
         if (!reimbursementData.managerJustification?.trim()) {
           newErrors.managerJustification = 'Executive justification is required';
@@ -145,7 +183,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         }
       }
 
-      // Enhanced validation for Manager/Finance
       if (requiresEnhancedDocs) {
         if (!advanceData.managerJustification?.trim()) {
           newErrors.managerJustification = 'Executive justification is required';
@@ -176,7 +213,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         newErrors.liquidationSummary = 'Liquidation summary is required';
       }
 
-      // Enhanced validation for Manager/Finance
       if (requiresEnhancedDocs) {
         const selectedAdvance = pendingAdvances.find(adv => adv.id === liquidationData.advanceId);
         if (selectedAdvance && liquidationData.actualAmount) {
@@ -301,8 +337,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         multiple
         accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
         onChange={(e) => {
-          // File handling logic would go here
-          // For now, just showing the structure
           const files = Array.from(e.target.files || []).map(f => f.name);
           onChange(files);
         }}
@@ -402,7 +436,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
       </div>
 
-      {/* Enhanced fields for Manager/Finance */}
       {requiresEnhancedDocs && (
         <>
           <div className="border-t pt-4">
@@ -570,7 +603,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
       </div>
 
-      {/* Enhanced fields for Manager/Finance */}
       {requiresEnhancedDocs && (
         <>
           <div className="border-t pt-4">
@@ -649,6 +681,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
             value={liquidationData.advanceId || ''}
             onChange={(e) => setLiquidationData({...liquidationData, advanceId: e.target.value})}
             className={`w-full px-3 py-2 border rounded-md ${errors.advanceId ? 'border-red-500' : ''}`}
+            disabled={loadingAdvances}
           >
             <option value="">Select an advance...</option>
             {pendingAdvances.map(advance => (
@@ -657,6 +690,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
               </option>
             ))}
           </select>
+          {loadingAdvances && <p className="text-sm text-muted-foreground">Loading advances...</p>}
           {errors.advanceId && <p className="text-red-500 text-sm mt-1">{errors.advanceId}</p>}
         </div>
 
@@ -724,7 +758,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
         </div>
 
-        {/* Enhanced fields for Manager/Finance */}
         {requiresEnhancedDocs && (
           <>
             <div className="border-t pt-4">
@@ -831,7 +864,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
               variant="outline"
               className="p-6 h-auto flex flex-col items-center space-y-2 hover:bg-purple-50 hover:border-purple-300"
               onClick={() => openForm('LIQUIDATION')}
-              disabled={pendingAdvances.length === 0}
+              disabled={loadingAdvances || pendingAdvances.length === 0}
             >
               <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
                 <span className="text-2xl">📊</span>
@@ -839,8 +872,11 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
               <div className="text-center">
                 <p className="font-semibold">Liquidation</p>
                 <p className="text-sm text-muted-foreground">
-                  Account for advance money you've received
-                  {pendingAdvances.length === 0 && " (No advances to liquidate)"}
+                  {loadingAdvances 
+                    ? "Loading..." 
+                    : pendingAdvances.length === 0 
+                      ? "No advances to liquidate" 
+                      : "Account for advance money you've received"}
                 </p>
                 {requiresEnhancedDocs && pendingAdvances.length > 0 && (
                   <p className="text-xs text-amber-600 mt-1">⚠️ Enhanced docs required</p>
