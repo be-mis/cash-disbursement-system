@@ -140,7 +140,11 @@ const InboxPage: React.FC<InboxPageProps> = ({ currentUser, onUpdateRequest }) =
         
         if (role === 'Finance' && status === 'PENDING_FINANCE') {
             return [
-                { label: 'Approve & Forward', action: () => openActionModal(request, 'approve'), variant: 'primary' },
+                { 
+                    label: request.amount > 20000 ? 'Approve & Forward' : 'Approve', 
+                    action: () => openActionModal(request, 'approve'), 
+                    variant: 'primary' 
+                },
                 { label: 'Reject', action: () => openActionModal(request, 'reject'), variant: 'destructive' }
             ];
         }
@@ -364,7 +368,11 @@ const InboxPage: React.FC<InboxPageProps> = ({ currentUser, onUpdateRequest }) =
                             <p className="text-sm text-muted-foreground">
                                 You are about to <strong>{actionType}</strong> this request. 
                                 {actionType === 'validate' && ' This will forward it to Finance for review.'}
-                                {actionType === 'approve' && currentUser.role === 'Finance' && ' This will forward it to CEO for final approval.'}
+                                {actionType === 'approve' && currentUser.role === 'Finance' && (
+                                    selectedRequest.amount > 20000 
+                                    ? ' This will forward it to CEO for final approval.'
+                                    : ' This will mark it as approved and ready for payment.'
+                                )}
                                 {actionType === 'approve' && currentUser.role === 'CEO' && ' This will mark it ready for payment processing.'}
                                 {actionType === 'process_payment' && ' This will begin payment processing.'}
                                 {actionType === 'mark_paid' && ' This will complete the request as paid.'}

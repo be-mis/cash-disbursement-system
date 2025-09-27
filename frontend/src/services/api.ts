@@ -180,38 +180,19 @@ export const api = {
                 break;
             case 'APPROVED':
                 if (oldRequest.requestType === 'LIQUIDATION') {
-                    // Liquidation approved by Finance - mark advance as LIQUIDATED
-                    const liquidation = oldRequest as LiquidationRequest;
-                    const advanceIndex = requestsDB.findIndex(r => r.id === liquidation.advanceId);
-                    if (advanceIndex !== -1) {
-                        requestsDB[advanceIndex].status = 'LIQUIDATED';
-                        // Add timeline event to advance
-                        const liquidationEvent = {
-                            id: `timeline-${Date.now()}-liquidated`,
-                            stage: 'Advance Liquidated',
-                            decision: 'liquidated' as any,
-                            type: 'system' as const,
-                            actor: { id: 0, name: 'System', role: 'Finance' as Role },
-                            timestamp: new Date().toISOString(),
-                            comment: 'Advance fully accounted for via liquidation. No further action required.'
-                        };
-                        requestsDB[advanceIndex].timeline = [liquidationEvent, ...requestsDB[advanceIndex].timeline];
-                    }
+                    // Liquidation: approved by Finance = done
                     nextActionBy = [];
                     stage = 'Liquidation Approved';
                     decision = 'approved';
                 } else {
-                    // For reimbursement/cash advance: Check ₱20K threshold
+                    // Reimbursement or Cash Advance: check if CEO is needed
                     const needsCEO = oldRequest.amount > 20000;
-                    if (needsCEO && user.role === 'Finance') {
-                        // Finance approved, but CEO approval still needed
-                        newStatus = 'PENDING_CEO';
+                    if (needsCEO) {
                         nextActionBy = ['CEO'];
-                        stage = 'Finance Review - Forwarding to CEO';
+                        stage = 'CEO Approval';
                         decision = 'approved';
                     } else {
-                        // Ready for payment (either CEO approved or amount ≤ ₱20K)
-                        nextActionBy = ['Finance'];
+                        nextActionBy = []; // Ready for payment processing
                         stage = 'Approved';
                         decision = 'approved';
                     }
