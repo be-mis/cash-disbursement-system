@@ -8,7 +8,6 @@ import { formatPeso } from '../utils/formatters';
 interface RequestFormProps {
   currentUser: User;
   onRequestCreated: () => void;
-  // ✅ REMOVED: pendingAdvances prop — now fetched internally
 }
 
 const RequestCreationForms: React.FC<RequestFormProps> = ({ 
@@ -19,12 +18,9 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
   const [selectedType, setSelectedType] = useState<RequestType>('REIMBURSEMENT');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // ✅ NEW: Local state for pending advances
   const [pendingAdvances, setPendingAdvances] = useState<CashAdvanceRequest[]>([]);
   const [loadingAdvances, setLoadingAdvances] = useState(true);
 
-  // ✅ NEW: Fetch pending advances whenever needed
   useEffect(() => {
     const fetchPendingAdvances = async () => {
       if (currentUser.role === 'Employee' || currentUser.role === 'Manager') {
@@ -38,20 +34,16 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           setLoadingAdvances(false);
         }
       } else {
-        // Non-employees (Finance, CEO) shouldn't see liquidation option anyway
         setPendingAdvances([]);
         setLoadingAdvances(false);
       }
     };
 
-    // Fetch on mount and whenever user or form state changes
     fetchPendingAdvances();
   }, [currentUser.id, isFormOpen, selectedType]);
 
-  // Check if user requires enhanced documentation (Manager or Finance)
   const requiresEnhancedDocs = currentUser.role === 'Manager' || currentUser.role === 'Finance';
 
-  // Form data for each request type
   const [reimbursementData, setReimbursementData] = useState<Partial<CreateReimbursementDto>>({
     employeeId: currentUser.id,
     amount: 0,
@@ -61,7 +53,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     businessPurpose: '',
     priority: 'Medium',
     attachments: [],
-    // Enhanced fields for Manager/Finance
     managerJustification: '',
     budgetImpactAssessment: '',
     alternativesSought: '',
@@ -77,7 +68,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     advancePurpose: '',
     expectedLiquidationDate: '',
     priority: 'Medium',
-    // Enhanced fields for Manager/Finance
     managerJustification: '',
     budgetImpactAssessment: '',
     riskAssessment: '',
@@ -90,7 +80,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     description: '',
     liquidationSummary: '',
     attachments: [],
-    // Enhanced fields for Manager/Finance
     varianceExplanation: '',
     lessonsLearned: ''
   });
@@ -111,7 +100,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
   const closeForm = () => {
     setIsFormOpen(false);
     setErrors({});
-    // ✅ Optional: Reset liquidation data when closing
     if (selectedType === 'LIQUIDATION') {
       setLiquidationData({
         advanceId: '',
@@ -133,7 +121,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         newErrors.amount = 'Amount must be greater than 0';
       }
       if (!reimbursementData.description?.trim()) {
-        newErrors.description = 'Description is required';
+        newErrors.description = 'Please explain the purpose (e.g., "Q3 team offsite")';
       }
       if (!reimbursementData.expenseDate) {
         newErrors.expenseDate = 'Expense date is required';
@@ -166,7 +154,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         newErrors.estimatedAmount = 'Estimated amount must be greater than 0';
       }
       if (!advanceData.description?.trim()) {
-        newErrors.description = 'Description is required';
+        newErrors.description = 'Please explain the purpose (e.g., "Q3 team offsite")';
       }
       if (!advanceData.plannedExpenseDate) {
         newErrors.plannedExpenseDate = 'Planned expense date is required';
@@ -207,10 +195,10 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         newErrors.actualAmount = 'Actual amount must be greater than 0';
       }
       if (!liquidationData.description?.trim()) {
-        newErrors.description = 'Description is required';
+        newErrors.description = 'Please explain the purpose (e.g., "Q3 team offsite")';
       }
       if (!liquidationData.liquidationSummary?.trim()) {
-        newErrors.liquidationSummary = 'Liquidation summary is required';
+        newErrors.liquidationSummary = 'Provide expense breakdown (e.g., "Hotel: ₱5,000...")';
       }
 
       if (requiresEnhancedDocs) {
@@ -368,6 +356,11 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
             className={errors.amount ? 'border-red-500' : ''}
           />
           {errors.amount && <p className="text-red-500 text-sm mt-1">{errors.amount}</p>}
+          {reimbursementData.amount && reimbursementData.amount > 20000 && (
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-2 text-sm text-amber-700 mt-2">
+              ⚠️ Amount exceeds ₱20,000 — CEO approval required.
+            </div>
+          )}
         </div>
         <div>
           <Label htmlFor="category">Category *</Label>
@@ -523,6 +516,11 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
             className={errors.estimatedAmount ? 'border-red-500' : ''}
           />
           {errors.estimatedAmount && <p className="text-red-500 text-sm mt-1">{errors.estimatedAmount}</p>}
+          {advanceData.estimatedAmount && advanceData.estimatedAmount > 20000 && (
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-2 text-sm text-amber-700 mt-2">
+              ⚠️ Amount exceeds ₱20,000 — CEO approval required.
+            </div>
+          )}
         </div>
         <div>
           <Label htmlFor="category">Category *</Label>
