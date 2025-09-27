@@ -22,7 +22,8 @@ export type RequestStatus =
   | 'REJECTED'              // Rejected at any stage
   | 'PROCESSING_PAYMENT'    // Finance processing
   | 'PAID'                  // Payment completed
-  | 'PENDING_LIQUIDATION';  // For advances awaiting liquidation
+  | 'PENDING_LIQUIDATION'   // For advances awaiting liquidation
+  | 'LIQUIDATED';           // Advance fully accounted for
 
 export type RequestCategory = 
   | 'Office Supplies'

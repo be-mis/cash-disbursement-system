@@ -14,13 +14,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, requests }) 
     const userRequests = requests.filter(r => r.employeeId === currentUser.id);
     const inboxCount = requests.filter(r => r.nextActionBy.includes(currentUser.role)).length;
     
-    const totalSpent = userRequests
-        .filter(r => r.status === 'PAID')
+    const totalReimbursed = userRequests
+        .filter(r => r.requestType === 'REIMBURSEMENT' && r.status === 'PAID')
         .reduce((sum, r) => sum + r.amount, 0);
         
-    const pendingAmount = userRequests
-        .filter(r => ['PENDING_APPROVAL', 'PENDING_VALIDATION', 'PENDING_FINANCE', 'PENDING_CEO', 'APPROVED', 'PROCESSING_PAYMENT'].includes(r.status))
-        .reduce((sum, r) => sum + r.amount, 0);
+    const pendingRequests = userRequests.filter(r => 
+        !['PAID', 'REJECTED', 'LIQUIDATED'].includes(r.status)
+    );
+    const pendingAmount = pendingRequests.reduce((sum, r) => sum + r.amount, 0);
 
     // New: Get request type breakdown
     const getRequestTypeStats = () => {
@@ -99,7 +100,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, requests }) 
                         <CardTitle>My Pending Requests</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-4xl font-bold">{userRequests.filter(r => r.status !== 'PAID' && r.status !== 'REJECTED').length}</p>
+                        <p className="text-4xl font-bold">{pendingRequests.length}</p>
                         <p className="text-muted-foreground">Totaling {formatPeso(pendingAmount)}</p>
                         {pendingLiquidations > 0 && (
                             <p className="text-xs text-amber-600 mt-1">
@@ -114,8 +115,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, requests }) 
                         <CardTitle>Total Reimbursed</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-4xl font-bold">{formatPeso(totalSpent)}</p>
-                        <p className="text-muted-foreground">Across {userRequests.filter(r => r.status === 'PAID').length} requests</p>
+                        <p className="text-4xl font-bold">{formatPeso(totalReimbursed)}</p>
+                        <p className="text-muted-foreground">Across {userRequests.filter(r => r.requestType === 'REIMBURSEMENT' && r.status === 'PAID').length} requests</p>
                     </CardContent>
                 </Card>
                 
@@ -147,7 +148,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, requests }) 
             <div className="grid gap-6 lg:grid-cols-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Company-wide Status</CardTitle>
+                        <CardTitle>Request Dashboard</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                         {statusCounts.map(([status, count]) => (
@@ -179,7 +180,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, requests }) 
                         <hr className="my-2" />
                         <div className="flex justify-between font-semibold">
                             <span>Total:</span>
-                            <span>{formatPeso(totalSpent)}</span>
+                            <span>{formatPeso(totalReimbursed)}</span>
                         </div>
                     </CardContent>
                 </Card>

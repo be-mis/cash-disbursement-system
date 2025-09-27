@@ -3,6 +3,7 @@ import { Role, RequestStatus, RequestType } from '../types/types';
 export const ALL_ROLES: Role[] = ['Employee', 'Manager', 'Finance', 'CEO'];
 
 // Updated status colors to include new workflow statuses
+// Updated status colors to include new workflow statuses
 export const STATUS_COLORS: Record<RequestStatus, string> = {
     PENDING_VALIDATION: 'bg-yellow-100 text-yellow-800',
     PENDING_FINANCE: 'bg-orange-100 text-orange-800',
@@ -13,6 +14,7 @@ export const STATUS_COLORS: Record<RequestStatus, string> = {
     PROCESSING_PAYMENT: 'bg-purple-100 text-purple-800',
     PAID: 'bg-gray-100 text-gray-800',
     PENDING_LIQUIDATION: 'bg-amber-100 text-amber-800',
+    LIQUIDATED: 'bg-emerald-100 text-emerald-800', // New status
 };
 
 // Request type constants
