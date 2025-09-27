@@ -148,7 +148,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, requests }) 
             <div className="grid gap-6 lg:grid-cols-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Company-wide Status</CardTitle>
+                        <CardTitle>Request Dashboard</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                         {statusCounts.map(([status, count]) => (

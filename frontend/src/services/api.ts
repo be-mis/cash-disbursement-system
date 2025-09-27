@@ -147,127 +147,129 @@ export const api = {
         await new Promise(res => setTimeout(res, 500));
         return requestsDB.filter(r => r.nextActionBy.includes(user.role));
     },
+
     updateRequestStatus: async (
-    requestId: string, 
-    newStatus: RequestStatus, 
-    user: User, 
-    comment: string
-): Promise<Request> => {
-    await new Promise(res => setTimeout(res, 300));
-    const requestIndex = requestsDB.findIndex(r => r.id === requestId);
-    if (requestIndex === -1) {
-        throw new Error('Request not found');
-    }
+        requestId: string, 
+        newStatus: RequestStatus, 
+        user: User, 
+        comment: string
+    ): Promise<Request> => {
+        await new Promise(res => setTimeout(res, 300));
+        const requestIndex = requestsDB.findIndex(r => r.id === requestId);
+        if (requestIndex === -1) {
+            throw new Error('Request not found');
+        }
 
-    const oldRequest = requestsDB[requestIndex];
-    
-    let nextActionBy: Role[] = [];
-    let stage = '';
-    let decision: any = '';
+        const oldRequest = requestsDB[requestIndex];
+        
+        let nextActionBy: Role[] = [];
+        let stage = '';
+        let decision: any = '';
 
-    // Updated workflow with ₱20K threshold logic
-    switch(newStatus) {
-        case 'PENDING_FINANCE':
-            nextActionBy = ['Finance'];
-            stage = 'Manager Validation';
-            decision = 'validated';
-            break;
-        case 'PENDING_CEO':
-            nextActionBy = ['CEO'];
-            stage = 'Finance Review';
-            decision = 'approved';
-            break;
-        case 'APPROVED':
-            if (oldRequest.requestType === 'LIQUIDATION') {
-                // Liquidation approved by Finance - mark advance as LIQUIDATED
-                const liquidation = oldRequest as LiquidationRequest;
-                const advanceIndex = requestsDB.findIndex(r => r.id === liquidation.advanceId);
-                if (advanceIndex !== -1) {
-                    requestsDB[advanceIndex].status = 'LIQUIDATED';
-                    // Add timeline event to advance
-                    const liquidationEvent = {
-                        id: `timeline-${Date.now()}-liquidated`,
-                        stage: 'Advance Liquidated',
-                        decision: 'liquidated' as any,
-                        type: 'system' as const,
-                        actor: { id: 0, name: 'System', role: 'Finance' as Role },
-                        timestamp: new Date().toISOString(),
-                        comment: 'Advance fully accounted for via liquidation. No further action required.'
-                    };
-                    requestsDB[advanceIndex].timeline = [liquidationEvent, ...requestsDB[advanceIndex].timeline];
-                }
-                nextActionBy = [];
-                stage = 'Liquidation Approved';
+        // Updated workflow with ₱20K threshold logic
+        switch(newStatus) {
+            case 'PENDING_FINANCE':
+                nextActionBy = ['Finance'];
+                stage = 'Manager Validation';
+                decision = 'validated';
+                break;
+            case 'PENDING_CEO':
+                nextActionBy = ['CEO'];
+                stage = 'Finance Review';
                 decision = 'approved';
-            } else {
-                // For reimbursement/cash advance: Check if CEO approval needed
-                const requiresCEOApproval = oldRequest.amount > 20000;
-                if (requiresCEOApproval && user.role === 'Finance') {
-                    // Finance approved, but CEO approval still needed
-                    newStatus = 'PENDING_CEO';
-                    nextActionBy = ['CEO'];
-                    stage = 'Finance Review - Forwarding to CEO';
+                break;
+            case 'APPROVED':
+                if (oldRequest.requestType === 'LIQUIDATION') {
+                    // Liquidation approved by Finance - mark advance as LIQUIDATED
+                    const liquidation = oldRequest as LiquidationRequest;
+                    const advanceIndex = requestsDB.findIndex(r => r.id === liquidation.advanceId);
+                    if (advanceIndex !== -1) {
+                        requestsDB[advanceIndex].status = 'LIQUIDATED';
+                        // Add timeline event to advance
+                        const liquidationEvent = {
+                            id: `timeline-${Date.now()}-liquidated`,
+                            stage: 'Advance Liquidated',
+                            decision: 'liquidated' as any,
+                            type: 'system' as const,
+                            actor: { id: 0, name: 'System', role: 'Finance' as Role },
+                            timestamp: new Date().toISOString(),
+                            comment: 'Advance fully accounted for via liquidation. No further action required.'
+                        };
+                        requestsDB[advanceIndex].timeline = [liquidationEvent, ...requestsDB[advanceIndex].timeline];
+                    }
+                    nextActionBy = [];
+                    stage = 'Liquidation Approved';
                     decision = 'approved';
                 } else {
-                    // Ready for payment
-                    nextActionBy = ['Finance'];
-                    stage = 'Approved';
-                    decision = 'approved';
+                    // For reimbursement/cash advance: Check ₱20K threshold
+                    const needsCEO = oldRequest.amount > 20000;
+                    if (needsCEO && user.role === 'Finance') {
+                        // Finance approved, but CEO approval still needed
+                        newStatus = 'PENDING_CEO';
+                        nextActionBy = ['CEO'];
+                        stage = 'Finance Review - Forwarding to CEO';
+                        decision = 'approved';
+                    } else {
+                        // Ready for payment (either CEO approved or amount ≤ ₱20K)
+                        nextActionBy = ['Finance'];
+                        stage = 'Approved';
+                        decision = 'approved';
+                    }
                 }
-            }
-            break;
-        case 'REJECTED':
-            nextActionBy = [];
-            stage = 'Rejection';
-            decision = 'rejected';
-            break;
-        case 'PROCESSING_PAYMENT':
-            if (oldRequest.requestType === 'CASH_ADVANCE') {
+                break;
+            case 'REJECTED':
                 nextActionBy = [];
-                stage = 'Ready for Liquidation';
-                decision = 'released';
-                newStatus = 'PENDING_LIQUIDATION'; // Override for cash advances
-            } else {
+                stage = 'Rejection';
+                decision = 'rejected';
+                break;
+            case 'PROCESSING_PAYMENT':
+                if (oldRequest.requestType === 'CASH_ADVANCE') {
+                    nextActionBy = [];
+                    stage = 'Ready for Liquidation';
+                    decision = 'released';
+                    newStatus = 'PENDING_LIQUIDATION'; // Override for cash advances
+                } else {
+                    nextActionBy = [];
+                    stage = 'Payment Processing';
+                    decision = 'released';
+                }
+                break;
+            case 'PAID':
                 nextActionBy = [];
-                stage = 'Payment Processing';
+                stage = 'Payment Completed';
                 decision = 'released';
-            }
-            break;
-        case 'PAID':
-            nextActionBy = [];
-            stage = 'Payment Completed';
-            decision = 'released';
-            break;
-        default:
-            nextActionBy = [];
-            stage = 'Unknown';
-            decision = 'unknown';
-            break;
-    }
-    
-    const newTimelineEvent: TimelineEvent = {
-        id: `timeline-${Date.now()}`,
-        stage,
-        decision,
-        type: 'user',
-        actor: { id: user.id, name: user.name, role: user.role },
-        timestamp: new Date().toISOString(),
-        comment
-    };
-    
-    const updatedRequest = {
-        ...oldRequest,
-        status: oldRequest.requestType === 'CASH_ADVANCE' && newStatus === 'PROCESSING_PAYMENT' 
-            ? 'PENDING_LIQUIDATION' 
-            : newStatus,
-        updatedAt: new Date().toISOString(),
-        timeline: [newTimelineEvent, ...oldRequest.timeline],
-        nextActionBy: nextActionBy
-    };
+                break;
+            default:
+                nextActionBy = [];
+                stage = 'Unknown';
+                decision = 'unknown';
+                break;
+        }
+        
+        const newTimelineEvent: TimelineEvent = {
+            id: `timeline-${Date.now()}`,
+            stage,
+            decision,
+            type: 'user',
+            actor: { id: user.id, name: user.name, role: user.role },
+            timestamp: new Date().toISOString(),
+            comment
+        };
+        
+        const updatedRequest = {
+            ...oldRequest,
+            status: oldRequest.requestType === 'CASH_ADVANCE' && newStatus === 'PROCESSING_PAYMENT' 
+                ? 'PENDING_LIQUIDATION' 
+                : newStatus,
+            updatedAt: new Date().toISOString(),
+            timeline: [newTimelineEvent, ...oldRequest.timeline],
+            nextActionBy: nextActionBy
+        };
 
-    requestsDB[requestIndex] = updatedRequest;
-    return updatedRequest;
-},
+        requestsDB[requestIndex] = updatedRequest;
+        return updatedRequest;
+    },
+
     // New method to get connected requests (advance + liquidation)
     getConnectedRequests: async (requestId: string): Promise<Request[]> => {
         await new Promise(res => setTimeout(res, 300));
@@ -291,184 +293,182 @@ export const api = {
         return connected;
     },
 
-    /// Create Reimbursement Request - Role-based workflow with ₱20K threshold
-createReimbursementRequest: async (data: CreateReimbursementDto): Promise<Request> => {
-    await new Promise(res => setTimeout(res, 500));
-    
-    const user = USERS.find(u => u.id === data.employeeId);
-    if (!user) throw new Error('User not found');
-    
-    const manager = USERS.find(u => u.role === 'Manager');
-    const finance = USERS.find(u => u.role === 'Finance');
-    const ceo = USERS.find(u => u.role === 'CEO');
-    
-    // ₱20K threshold logic
-    const requiresCEOApproval = data.amount > 20000;
-    
-    // Role-based approval workflow
-    let initialStatus: RequestStatus;
-    let nextActionBy: Role[];
-    let approvers: User[];
-    let timelineComment: string;
-    
-    switch (user.role) {
-        case 'Employee':
-            initialStatus = 'PENDING_VALIDATION';
-            nextActionBy = ['Manager'];
-            approvers = requiresCEOApproval ? [manager!, finance!, ceo!] : [manager!, finance!];
-            timelineComment = `Reimbursement request created by employee - awaiting manager validation. ${requiresCEOApproval ? 'CEO approval required (amount > ₱20,000).' : ''}`;
-            break;
+    createReimbursementRequest: async (data: CreateReimbursementDto): Promise<Request> => {
+        await new Promise(res => setTimeout(res, 500));
         
-        case 'Manager':
-            initialStatus = 'PENDING_FINANCE';
-            nextActionBy = ['Finance'];
-            approvers = requiresCEOApproval ? [finance!, ceo!] : [finance!];
-            timelineComment = `Manager reimbursement request created - manager validation skipped, forwarded to Finance. ${requiresCEOApproval ? 'CEO approval required (amount > ₱20,000).' : ''}`;
-            break;
+        const user = USERS.find(u => u.id === data.employeeId);
+        if (!user) throw new Error('User not found');
         
-        case 'Finance':
-            initialStatus = requiresCEOApproval ? 'PENDING_CEO' : 'APPROVED';
-            nextActionBy = requiresCEOApproval ? ['CEO'] : ['Finance'];
-            approvers = requiresCEOApproval ? [ceo!] : [finance!];
-            timelineComment = requiresCEOApproval 
-                ? 'Finance reimbursement request created - forwarded directly to CEO for approval (amount > ₱20,000).'
-                : 'Finance reimbursement request created - auto-approved (amount ≤ ₱20,000), ready for payment processing.';
-            break;
+        const manager = USERS.find(u => u.role === 'Manager');
+        const finance = USERS.find(u => u.role === 'Finance');
+        const ceo = USERS.find(u => u.role === 'CEO');
         
-        case 'CEO':
-            initialStatus = 'APPROVED';
-            nextActionBy = ['Finance'];
-            approvers = [finance!];
-            timelineComment = 'CEO reimbursement request created - auto-approved, ready for payment processing.';
-            break;
+        // ₱20K threshold logic
+        const needsCEO = data.amount > 20000;
         
-        default:
-            throw new Error('Invalid user role');
-    }
+        // Role-based approval workflow
+        let initialStatus: RequestStatus;
+        let nextActionBy: Role[];
+        let approvers: User[];
+        let timelineComment: string;
+        
+        switch (user.role) {
+            case 'Employee':
+                initialStatus = 'PENDING_VALIDATION';
+                nextActionBy = ['Manager'];
+                approvers = needsCEO ? [manager!, finance!, ceo!] : [manager!, finance!];
+                timelineComment = `Reimbursement request created by employee - awaiting manager validation. ${needsCEO ? 'CEO approval required (amount > ₱20,000).' : ''}`;
+                break;
+            
+            case 'Manager':
+                initialStatus = 'PENDING_FINANCE';
+                nextActionBy = ['Finance'];
+                approvers = needsCEO ? [finance!, ceo!] : [finance!];
+                timelineComment = `Manager reimbursement request created - manager validation skipped, forwarded to Finance. ${needsCEO ? 'CEO approval required (amount > ₱20,000).' : ''}`;
+                break;
+            
+            case 'Finance':
+                initialStatus = needsCEO ? 'PENDING_CEO' : 'APPROVED';
+                nextActionBy = needsCEO ? ['CEO'] : ['Finance'];
+                approvers = needsCEO ? [ceo!] : [finance!];
+                timelineComment = needsCEO 
+                    ? 'Finance reimbursement request created - forwarded directly to CEO for approval (amount > ₱20,000).'
+                    : 'Finance reimbursement request created - auto-approved (amount ≤ ₱20,000), ready for payment processing.';
+                break;
+            
+            case 'CEO':
+                initialStatus = 'APPROVED';
+                nextActionBy = ['Finance'];
+                approvers = [finance!];
+                timelineComment = 'CEO reimbursement request created - auto-approved, ready for payment processing.';
+                break;
+            
+            default:
+                throw new Error('Invalid user role');
+        }
 
-    const newRequest: ReimbursementRequest = {
-        id: generateRequestId(),
-        requestType: 'REIMBURSEMENT',
-        employeeName: user.name,
-        employeeId: data.employeeId,
-        amount: data.amount,
-        currency: 'PHP',
-        description: data.description,
-        category: data.category,
-        status: initialStatus,
-        priority: data.priority,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        approvers: approvers,
-        nextActionBy: nextActionBy,
-        timeline: [{
-            id: `timeline-${Date.now()}`,
-            stage: 'Request Submitted',
-            decision: 'submitted',
-            type: 'system',
-            actor: { id: user.id, name: user.name, role: user.role },
-            timestamp: new Date().toISOString(),
-            comment: timelineComment
-        }],
-        attachments: data.attachments || [],
-        expenseDate: data.expenseDate,
-        receipts: [],
-        businessPurpose: data.businessPurpose
-    };
+        const newRequest: ReimbursementRequest = {
+            id: generateRequestId(),
+            requestType: 'REIMBURSEMENT',
+            employeeName: user.name,
+            employeeId: data.employeeId,
+            amount: data.amount,
+            currency: 'PHP',
+            description: data.description,
+            category: data.category,
+            status: initialStatus,
+            priority: data.priority,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            approvers: approvers,
+            nextActionBy: nextActionBy,
+            timeline: [{
+                id: `timeline-${Date.now()}`,
+                stage: 'Request Submitted',
+                decision: 'submitted',
+                type: 'system',
+                actor: { id: user.id, name: user.name, role: user.role },
+                timestamp: new Date().toISOString(),
+                comment: timelineComment
+            }],
+            attachments: data.attachments || [],
+            expenseDate: data.expenseDate,
+            receipts: [],
+            businessPurpose: data.businessPurpose
+        };
 
-    requestsDB.push(newRequest);
-    return newRequest;
-},
+        requestsDB.push(newRequest);
+        return newRequest;
+    },
 
-    // Create Cash Advance Request - Role-based workflow with ₱20K threshold
-createCashAdvanceRequest: async (data: CreateCashAdvanceDto): Promise<Request> => {
-    await new Promise(res => setTimeout(res, 500));
-    
-    const user = USERS.find(u => u.id === data.employeeId);
-    if (!user) throw new Error('User not found');
-    
-    const manager = USERS.find(u => u.role === 'Manager');
-    const finance = USERS.find(u => u.role === 'Finance');
-    const ceo = USERS.find(u => u.role === 'CEO');
-    
-    // ₱20K threshold logic
-    const requiresCEOApproval = data.estimatedAmount > 20000;
-    
-    // Role-based approval workflow
-    let initialStatus: RequestStatus;
-    let nextActionBy: Role[];
-    let approvers: User[];
-    let timelineComment: string;
-    
-    switch (user.role) {
-        case 'Employee':
-            initialStatus = 'PENDING_VALIDATION';
-            nextActionBy = ['Manager'];
-            approvers = requiresCEOApproval ? [manager!, finance!, ceo!] : [manager!, finance!];
-            timelineComment = `Cash advance request created by employee - awaiting manager validation. ${requiresCEOApproval ? 'CEO approval required (amount > ₱20,000).' : ''}`;
-            break;
+    createCashAdvanceRequest: async (data: CreateCashAdvanceDto): Promise<Request> => {
+        await new Promise(res => setTimeout(res, 500));
         
-        case 'Manager':
-            initialStatus = 'PENDING_FINANCE';
-            nextActionBy = ['Finance'];
-            approvers = requiresCEOApproval ? [finance!, ceo!] : [finance!];
-            timelineComment = `Manager cash advance request created - manager validation skipped, forwarded to Finance. ${requiresCEOApproval ? 'CEO approval required (amount > ₱20,000).' : ''}`;
-            break;
+        const user = USERS.find(u => u.id === data.employeeId);
+        if (!user) throw new Error('User not found');
         
-        case 'Finance':
-            initialStatus = requiresCEOApproval ? 'PENDING_CEO' : 'APPROVED';
-            nextActionBy = requiresCEOApproval ? ['CEO'] : ['Finance'];
-            approvers = requiresCEOApproval ? [ceo!] : [finance!];
-            timelineComment = requiresCEOApproval 
-                ? 'Finance cash advance request created - forwarded directly to CEO for approval (amount > ₱20,000).'
-                : 'Finance cash advance request created - auto-approved (amount ≤ ₱20,000), ready for payment processing.';
-            break;
+        const manager = USERS.find(u => u.role === 'Manager');
+        const finance = USERS.find(u => u.role === 'Finance');
+        const ceo = USERS.find(u => u.role === 'CEO');
         
-        case 'CEO':
-            initialStatus = 'APPROVED';
-            nextActionBy = ['Finance'];
-            approvers = [finance!];
-            timelineComment = 'CEO cash advance request created - auto-approved, ready for payment processing.';
-            break;
+        // ₱20K threshold logic
+        const needsCEO = data.estimatedAmount > 20000;
         
-        default:
-            throw new Error('Invalid user role');
-    }
+        // Role-based approval workflow
+        let initialStatus: RequestStatus;
+        let nextActionBy: Role[];
+        let approvers: User[];
+        let timelineComment: string;
+        
+        switch (user.role) {
+            case 'Employee':
+                initialStatus = 'PENDING_VALIDATION';
+                nextActionBy = ['Manager'];
+                approvers = needsCEO ? [manager!, finance!, ceo!] : [manager!, finance!];
+                timelineComment = `Cash advance request created by employee - awaiting manager validation. ${needsCEO ? 'CEO approval required (amount > ₱20,000).' : ''}`;
+                break;
+            
+            case 'Manager':
+                initialStatus = 'PENDING_FINANCE';
+                nextActionBy = ['Finance'];
+                approvers = needsCEO ? [finance!, ceo!] : [finance!];
+                timelineComment = `Manager cash advance request created - manager validation skipped, forwarded to Finance. ${needsCEO ? 'CEO approval required (amount > ₱20,000).' : ''}`;
+                break;
+            
+            case 'Finance':
+                initialStatus = needsCEO ? 'PENDING_CEO' : 'APPROVED';
+                nextActionBy = needsCEO ? ['CEO'] : ['Finance'];
+                approvers = needsCEO ? [ceo!] : [finance!];
+                timelineComment = needsCEO 
+                    ? 'Finance cash advance request created - forwarded directly to CEO for approval (amount > ₱20,000).'
+                    : 'Finance cash advance request created - auto-approved (amount ≤ ₱20,000), ready for payment processing.';
+                break;
+            
+            case 'CEO':
+                initialStatus = 'APPROVED';
+                nextActionBy = ['Finance'];
+                approvers = [finance!];
+                timelineComment = 'CEO cash advance request created - auto-approved, ready for payment processing.';
+                break;
+            
+            default:
+                throw new Error('Invalid user role');
+        }
 
-    const newRequest: CashAdvanceRequest = {
-        id: generateRequestId(),
-        requestType: 'CASH_ADVANCE',
-        employeeName: user.name,
-        employeeId: data.employeeId,
-        amount: data.estimatedAmount,
-        currency: 'PHP',
-        description: data.description,
-        category: data.category,
-        status: initialStatus,
-        priority: data.priority,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        approvers: approvers,
-        nextActionBy: nextActionBy,
-        timeline: [{
-            id: `timeline-${Date.now()}`,
-            stage: 'Request Submitted',
-            decision: 'submitted',
-            type: 'system',
-            actor: { id: user.id, name: user.name, role: user.role },
-            timestamp: new Date().toISOString(),
-            comment: timelineComment
-        }],
-        attachments: [],
-        plannedExpenseDate: data.plannedExpenseDate,
-        estimatedAmount: data.estimatedAmount,
-        advancePurpose: data.advancePurpose,
-        expectedLiquidationDate: data.expectedLiquidationDate
-    };
+        const newRequest: CashAdvanceRequest = {
+            id: generateRequestId(),
+            requestType: 'CASH_ADVANCE',
+            employeeName: user.name,
+            employeeId: data.employeeId,
+            amount: data.estimatedAmount,
+            currency: 'PHP',
+            description: data.description,
+            category: data.category,
+            status: initialStatus,
+            priority: data.priority,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            approvers: approvers,
+            nextActionBy: nextActionBy,
+            timeline: [{
+                id: `timeline-${Date.now()}`,
+                stage: 'Request Submitted',
+                decision: 'submitted',
+                type: 'system',
+                actor: { id: user.id, name: user.name, role: user.role },
+                timestamp: new Date().toISOString(),
+                comment: timelineComment
+            }],
+            attachments: [],
+            plannedExpenseDate: data.plannedExpenseDate,
+            estimatedAmount: data.estimatedAmount,
+            advancePurpose: data.advancePurpose,
+            expectedLiquidationDate: data.expectedLiquidationDate
+        };
 
-    requestsDB.push(newRequest);
-    return newRequest;
-},
+        requestsDB.push(newRequest);
+        return newRequest;
+    },
 
     // Create Liquidation Request
     createLiquidationRequest: async (data: CreateLiquidationDto): Promise<Request> => {
