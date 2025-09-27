@@ -14,6 +14,22 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
   currentUser, 
   onRequestCreated,
 }) => {
+  // Simple toast function
+  const showToast = (message: string) => {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-md shadow-lg z-50 transition-opacity';
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => document.body.removeChild(toast), 300);
+    }, 3000);
+  };
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<RequestType>('REIMBURSEMENT');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -279,6 +295,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
       
       closeForm();
       onRequestCreated();
+      // Show success toast
+      showToast(`✅ ${REQUEST_TYPE_LABELS[selectedType]} request submitted successfully!`);
       
     } catch (error) {
       console.error('Failed to create request:', error);
