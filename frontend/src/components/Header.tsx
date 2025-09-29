@@ -34,7 +34,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate, currentUser })
                                 <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 20 12 20Z" fill="currentColor"/>
                                 <path d="M15.99 8.5C15.99 7.67 15.32 7 14.49 7H9.5C8.67 7 8 7.67 8 8.5C8 9.33 8.67 10 9.5 10H13.49L12.24 11.25C11.66 11.83 11.66 12.78 12.24 13.36C12.53 13.65 12.9 13.8 13.27 13.8C13.64 13.8 14.01 13.65 14.3 13.36L15.99 11.67V8.5Z" fill="currentColor"/>
                             </svg>
-                            <span className="text-xl font-bold">CashFlow</span>
+                            <span className="text-xl font-bold">CDS</span>
                         </div>
                         <nav className="hidden md:flex space-x-4">
                             {navItems.map((item) => (
