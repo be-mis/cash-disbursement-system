@@ -2,7 +2,6 @@ import { User, Role } from '../types';
 
 export class UserService {
   // Empty users array - In a real app, this would connect to a database
-  private users: User[] = [];
 
   async getAllUsers(): Promise<User[]> {
     return [...this.users];

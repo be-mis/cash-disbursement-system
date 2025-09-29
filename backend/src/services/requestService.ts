@@ -4,7 +4,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class RequestService {
   private userService = new UserService();
-  private requests: Request[] = [];
 
   async getAllRequests(filters: RequestFilters = {}, pagination: PaginationQuery = {}): Promise<{requests: Request[], totalCount: number}> {
     let filteredRequests = [...this.requests];
