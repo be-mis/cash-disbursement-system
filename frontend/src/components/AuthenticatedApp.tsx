@@ -17,7 +17,7 @@ const AuthenticatedHeader: React.FC<AuthenticatedHeaderProps> = ({ currentUser, 
           <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
             <span className="font-bold text-sm">CF</span>
           </div>
-          <h1 className="text-xl font-bold">CashFlow</h1>
+          <h1 className="text-xl font-bold">Cash Disbursement System</h1>
         </div>
         
         <div className="flex items-center space-x-4">

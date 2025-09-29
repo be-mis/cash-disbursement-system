@@ -1,52 +1,43 @@
+import pool from '../config/database';
 import { User, Role } from '../types';
 
 export class UserService {
-  // Empty users array - In a real app, this would connect to a database
-  private users: User[] = [];
+  // Removed in-memory users array since we're using a database
 
   async getAllUsers(): Promise<User[]> {
-    return [...this.users];
+    const [rows] = await pool.execute('SELECT * FROM users');
+    return rows as User[];
   }
 
   async getUserById(id: number): Promise<User | null> {
-    const user = this.users.find(u => u.id === id);
-    return user || null;
+    const [rows] = await pool.execute('SELECT * FROM users WHERE id = ?', [id]);
+    return (rows as User[])[0] || null;
   }
 
   async getUsersByRole(role: Role): Promise<User[]> {
-    return this.users.filter(u => u.role === role);
+    const [rows] = await pool.execute('SELECT * FROM users WHERE role = ?', [role]);
+    return rows as User[];
   }
 
   async createUser(userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {
-    const newUser: User = {
-      id: Math.max(...this.users.map(u => u.id), 0) + 1,
-      ...userData,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    this.users.push(newUser);
-    return newUser;
+    const { name, email, role, department } = userData;
+    const [result] = await pool.execute(
+      'INSERT INTO users (name, email, role, department) VALUES (?, ?, ?, ?)',
+      [name, email, role, department || null]
+    );
+    const insertId = (result as any).insertId;
+    return this.getUserById(insertId) as Promise<User>;
   }
 
   async updateUser(id: number, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | null> {
-    const userIndex = this.users.findIndex(u => u.id === id);
-    
-    if (userIndex === -1) {
-      return null;
-    }
-
-    this.users[userIndex] = {
-      ...this.users[userIndex],
-      ...updates,
-      updatedAt: new Date()
-    };
-
-    return this.users[userIndex];
+    const fields = Object.keys(updates).map(key => `${key} = ?`).join(', ');
+    const values = [...Object.values(updates), id];
+    await pool.execute(`UPDATE users SET ${fields}, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`, values);
+    return this.getUserById(id);
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    const user = this.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    return user || null;
+    const [rows] = await pool.execute('SELECT * FROM users WHERE LOWER(email) = ?', [email.toLowerCase()]);
+    return (rows as User[])[0] || null;
   }
 }
