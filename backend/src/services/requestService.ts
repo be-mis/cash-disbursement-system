@@ -76,17 +76,20 @@ export class RequestService {
     const employee = await userService.getUserById(requestData.employeeId);
     if (!employee) throw new Error('Employee not found');
 
-    // Determine workflow
+    // Determine workflow based on employee role
     let status: RequestStatus = 'PENDING_VALIDATION';
     let nextActionBy: Role[] = ['Manager'];
 
     if (employee.role === 'Manager') {
+      // Manager submitting - skip validation, go to Finance
       status = 'PENDING_APPROVAL';
       nextActionBy = ['Finance'];
     } else if (employee.role === 'Finance') {
-      status = requestData.amount > 20000 ? 'PENDING_CEO' : 'APPROVED';
+      // Finance submitting - check amount
+      status = requestData.amount > 20000 ? 'PENDING_APPROVAL' : 'APPROVED';
       nextActionBy = requestData.amount > 20000 ? ['CEO'] : [];
     } else if (employee.role === 'CEO') {
+      // CEO submitting - auto-approve
       status = 'APPROVED';
       nextActionBy = [];
     }
@@ -136,8 +139,51 @@ export class RequestService {
     const actor = await userService.getUserById(statusUpdate.actorId);
     if (!request || !actor) return null;
 
-    const newStatus = statusUpdate.status;
-    const nextActionBy = this.getNextActionBy(newStatus);
+    let newStatus: RequestStatus;
+    let nextActionBy: Role[];
+
+    // ✅ FIXED: Handle each role's approval logic explicitly
+    if (statusUpdate.status === 'APPROVED') {
+      // When someone clicks "Approve", determine the next step based on their role
+      
+      if (actor.role === 'Manager') {
+        // ✅ Manager approving → Always go to Finance next
+        newStatus = 'PENDING_APPROVAL';
+        nextActionBy = ['Finance'];
+        
+      } else if (actor.role === 'Finance') {
+        // ✅ Finance approving → Check amount threshold
+        if (request.amount > 20000) {
+          // Large amount → Need CEO approval
+          newStatus = 'PENDING_APPROVAL';
+          nextActionBy = ['CEO'];
+        } else {
+          // Small amount (≤ ₱20,000) → Final approval, skip CEO
+          newStatus = 'APPROVED';
+          nextActionBy = [];
+        }
+        
+      } else if (actor.role === 'CEO') {
+        // ✅ CEO approving → Always final approval
+        newStatus = 'APPROVED';
+        nextActionBy = [];
+        
+      } else {
+        // Fallback for Employee role (shouldn't happen in normal flow)
+        newStatus = 'PENDING_VALIDATION';
+        nextActionBy = ['Manager'];
+      }
+      
+    } else if (statusUpdate.status === 'REJECTED') {
+      // ✅ Rejection can happen at any stage
+      newStatus = 'REJECTED';
+      nextActionBy = [];
+      
+    } else {
+      // ✅ For other statuses (PROCESSING_PAYMENT, PAID, etc.)
+      newStatus = statusUpdate.status;
+      nextActionBy = this.getNextActionBy(newStatus);
+    }
 
     // Update request
     await pool.execute(
@@ -203,7 +249,13 @@ export class RequestService {
       case 'PENDING_APPROVAL':
         return ['Finance'];
       case 'APPROVED':
+        return [];
+      case 'PROCESSING_PAYMENT':
         return ['Finance'];
+      case 'PAID':
+        return [];
+      case 'REJECTED':
+        return [];
       default:
         return [];
     }
@@ -219,6 +271,10 @@ export class RequestService {
         return 'Approved';
       case 'REJECTED':
         return 'Request Rejected';
+      case 'PROCESSING_PAYMENT':
+        return 'Processing Payment';
+      case 'PAID':
+        return 'Payment Released';
       default:
         return 'Unknown Stage';
     }
@@ -234,6 +290,10 @@ export class RequestService {
         return 'submitted';
       case 'PENDING_APPROVAL':
         return 'validated';
+      case 'PROCESSING_PAYMENT':
+        return 'validated';
+      case 'PAID':
+        return 'released';
       default:
         return 'submitted';
     }

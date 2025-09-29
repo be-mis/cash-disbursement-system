@@ -14,14 +14,17 @@ export interface User {
 
 // Request types
 export type RequestStatus = 
-  | 'PENDING_VALIDATION' 
-  | 'PENDING_APPROVAL' 
-  | 'APPROVED' 
-  | 'PROCESSING_PAYMENT' 
-  | 'PAID' 
-  | 'REJECTED';
+  | 'PENDING_VALIDATION'      // Employee submitted, waiting for Manager
+  | 'PENDING_APPROVAL'        // Manager validated, waiting for Finance (or CEO for >20k)
+  | 'APPROVED'                // Fully approved, ready for payment processing
+  | 'PROCESSING_PAYMENT'      // Finance is processing the payment
+  | 'PAID'                    // Payment has been released
+  | 'REJECTED';               // Request was rejected at any stage
 
 export type RequestCategory = 
+  | 'Reimbursement'
+  | 'Cash Advance'
+  | 'Liquidation'
   | 'Office Supplies'
   | 'Travel'
   | 'Marketing'
