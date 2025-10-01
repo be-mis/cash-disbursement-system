@@ -29,10 +29,12 @@ export type RequestCategory =
   | 'Office Supplies'
   | 'Travel'
   | 'Marketing'
+  | 'Marketing Expense'  // NEW
   | 'Software'
   | 'Equipment'
   | 'Meals'
   | 'Transportation'
+  | 'Research and Development'  // NEW
   | 'Other';
 
 export type Priority = 'Low' | 'Medium' | 'High' | 'Urgent';
@@ -111,10 +113,17 @@ export interface CreateReimbursementDto {
   amount: number;
   category: RequestCategory;
   description: string;
-  expenseDate: string;
+  expenseStartDate: string;      // NEW
+  expenseEndDate: string;         // NEW
   businessPurpose: string;
+  department: string;             // NEW
+  company: string;                // NEW
   priority: Priority;
   attachments?: string[];
+  managerJustification?: string;
+  budgetImpactAssessment?: string;
+  alternativesSought?: string;
+  complianceNotes?: string;
 }
 
 export interface CreateCashAdvanceDto {
@@ -125,7 +134,15 @@ export interface CreateCashAdvanceDto {
   plannedExpenseDate: string;
   advancePurpose: string;
   expectedLiquidationDate: string;
+  destination: string;            // NEW
+  remarks: string;                // NEW
+  department: string;             // NEW
+  company: string;                // NEW
   priority: Priority;
+  managerJustification?: string;
+  budgetImpactAssessment?: string;
+  riskAssessment?: string;
+  expectedROI?: string;
 }
 
 export interface CreateLiquidationDto {

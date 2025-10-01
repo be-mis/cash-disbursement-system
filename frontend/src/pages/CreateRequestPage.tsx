@@ -65,8 +65,11 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     amount: 0,
     category: 'Office Supplies',
     description: '',
-    expenseDate: '',
+    expenseStartDate: '',      // NEW
+    expenseEndDate: '',         // NEW
     businessPurpose: '',
+    department: '',             // NEW
+    company: '',                // NEW
     priority: 'Medium',
     attachments: [],
     managerJustification: '',
@@ -83,6 +86,10 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     plannedExpenseDate: '',
     advancePurpose: '',
     expectedLiquidationDate: '',
+    destination: '',            // NEW
+    remarks: '',                // NEW
+    department: '',             // NEW
+    company: '',                // NEW
     priority: 'Medium',
     managerJustification: '',
     budgetImpactAssessment: '',
@@ -101,8 +108,26 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
   });
 
   const categories: RequestCategory[] = [
-    'Office Supplies', 'Travel', 'Marketing', 'Software', 
-    'Equipment', 'Meals', 'Transportation', 'Other'
+    'Office Supplies', 
+    'Travel', 
+    'Marketing', 
+    'Marketing Expense',           // NEW
+    'Software', 
+    'Equipment', 
+    'Meals', 
+    'Transportation', 
+    'Research and Development',    // NEW
+    'Other'
+  ];
+
+  const departments = [
+    'IT',
+    'Sales', 
+    'Marketing',
+    'HR',
+    'Finance',
+    'Operations',
+    'Other'
   ];
 
   const priorities: Priority[] = ['Low', 'Medium', 'High', 'Urgent'];
@@ -139,11 +164,25 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
       if (!reimbursementData.description?.trim()) {
         newErrors.description = 'Please explain the purpose (e.g., "Q3 team offsite")';
       }
-      if (!reimbursementData.expenseDate) {
-        newErrors.expenseDate = 'Expense date is required';
+      if (!reimbursementData.expenseStartDate) {
+        newErrors.expenseStartDate = 'Expense start date is required';
+      }
+      if (!reimbursementData.expenseEndDate) {
+        newErrors.expenseEndDate = 'Expense end date is required';
+      }
+      if (reimbursementData.expenseStartDate && reimbursementData.expenseEndDate) {
+        if (new Date(reimbursementData.expenseEndDate) < new Date(reimbursementData.expenseStartDate)) {
+          newErrors.expenseEndDate = 'End date cannot be before start date';
+        }
       }
       if (!reimbursementData.businessPurpose?.trim()) {
         newErrors.businessPurpose = 'Business purpose is required';
+      }
+      if (!reimbursementData.department) {
+        newErrors.department = 'Department is required';
+      }
+      if (!reimbursementData.company?.trim()) {
+        newErrors.company = 'Company name is required';
       }
 
       if (requiresEnhancedDocs) {
@@ -185,6 +224,18 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         if (new Date(advanceData.expectedLiquidationDate) <= new Date(advanceData.plannedExpenseDate)) {
           newErrors.expectedLiquidationDate = 'Liquidation date must be after planned expense date';
         }
+      }
+      if (!advanceData.destination?.trim()) {
+        newErrors.destination = 'Destination/Location is required';
+      }
+      if (!advanceData.remarks?.trim()) {
+        newErrors.remarks = 'Remarks (Store/Vendor Name) is required';
+      }
+      if (!advanceData.department) {
+        newErrors.department = 'Department is required';
+      }
+      if (!advanceData.company?.trim()) {
+        newErrors.company = 'Company name is required';
       }
 
       if (requiresEnhancedDocs) {
@@ -255,8 +306,11 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           amount: 0,
           category: 'Office Supplies',
           description: '',
-          expenseDate: '',
+          expenseStartDate: '',      // NEW
+          expenseEndDate: '',         // NEW
           businessPurpose: '',
+          department: '',             // NEW
+          company: '',                // NEW
           priority: 'Medium',
           attachments: [],
           managerJustification: '',
@@ -274,6 +328,10 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           plannedExpenseDate: '',
           advancePurpose: '',
           expectedLiquidationDate: '',
+          destination: '',            // NEW
+          remarks: '',                // NEW
+          department: '',             // NEW
+          company: '',                // NEW
           priority: 'Medium',
           managerJustification: '',
           budgetImpactAssessment: '',
@@ -395,31 +453,77 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         </div>
       </div>
 
+      {/* REPLACE the single expenseDate field with these two date fields */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="expenseDate">Expense Date *</Label>
+          <Label htmlFor="expenseStartDate">Expense Start Date *</Label>
           <Input
-            id="expenseDate"
+            id="expenseStartDate"
             type="date"
-            value={reimbursementData.expenseDate || ''}
-            onChange={(e) => setReimbursementData({...reimbursementData, expenseDate: e.target.value})}
-            className={errors.expenseDate ? 'border-red-500' : ''}
+            value={reimbursementData.expenseStartDate || ''}
+            onChange={(e) => setReimbursementData({...reimbursementData, expenseStartDate: e.target.value})}
+            className={errors.expenseStartDate ? 'border-red-500' : ''}
           />
-          {errors.expenseDate && <p className="text-red-500 text-sm mt-1">{errors.expenseDate}</p>}
+          {errors.expenseStartDate && <p className="text-red-500 text-sm mt-1">{errors.expenseStartDate}</p>}
         </div>
         <div>
-          <Label htmlFor="priority">Priority *</Label>
+          <Label htmlFor="expenseEndDate">Expense End Date *</Label>
+          <Input
+            id="expenseEndDate"
+            type="date"
+            value={reimbursementData.expenseEndDate || ''}
+            onChange={(e) => setReimbursementData({...reimbursementData, expenseEndDate: e.target.value})}
+            className={errors.expenseEndDate ? 'border-red-500' : ''}
+          />
+          {errors.expenseEndDate && <p className="text-red-500 text-sm mt-1">{errors.expenseEndDate}</p>}
+          <p className="text-xs text-muted-foreground mt-1">
+            For multi-day expenses (e.g., 1-week trip)
+          </p>
+        </div>
+      </div>
+
+      {/* ADD these new fields after the date fields */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="department">Department *</Label>
           <select 
-            id="priority"
-            value={reimbursementData.priority || 'Medium'}
-            onChange={(e) => setReimbursementData({...reimbursementData, priority: e.target.value as Priority})}
-            className="w-full px-3 py-2 border rounded-md"
+            id="department"
+            value={reimbursementData.department || ''}
+            onChange={(e) => setReimbursementData({...reimbursementData, department: e.target.value})}
+            className={`w-full px-3 py-2 border rounded-md ${errors.department ? 'border-red-500' : ''}`}
           >
-            {priorities.map(p => (
-              <option key={p} value={p}>{p}</option>
+            <option value="">Select Department</option>
+            {departments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
             ))}
           </select>
+          {errors.department && <p className="text-red-500 text-sm mt-1">{errors.department}</p>}
         </div>
+        <div>
+          <Label htmlFor="company">Company *</Label>
+          <Input
+            id="company"
+            value={reimbursementData.company || ''}
+            onChange={(e) => setReimbursementData({...reimbursementData, company: e.target.value})}
+            placeholder="Company name"
+            className={errors.company ? 'border-red-500' : ''}
+          />
+          {errors.company && <p className="text-red-500 text-sm mt-1">{errors.company}</p>}
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="priority">Priority *</Label>
+        <select 
+          id="priority"
+          value={reimbursementData.priority || 'Medium'}
+          onChange={(e) => setReimbursementData({...reimbursementData, priority: e.target.value as Priority})}
+          className="w-full px-3 py-2 border rounded-md"
+        >
+          {priorities.map(p => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
       </div>
 
       <div>
@@ -592,6 +696,60 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
+      </div>
+
+      {/* ADD these new fields after the Priority field */}
+      <div>
+        <Label htmlFor="destination">Destination/Location *</Label>
+        <Input
+          id="destination"
+          value={advanceData.destination || ''}
+          onChange={(e) => setAdvanceData({...advanceData, destination: e.target.value})}
+          placeholder="e.g., Manila, Cebu, Client Office"
+          className={errors.destination ? 'border-red-500' : ''}
+        />
+        {errors.destination && <p className="text-red-500 text-sm mt-1">{errors.destination}</p>}
+      </div>
+
+      <div>
+        <Label htmlFor="remarks">Remarks (Store/Vendor Name) *</Label>
+        <Input
+          id="remarks"
+          value={advanceData.remarks || ''}
+          onChange={(e) => setAdvanceData({...advanceData, remarks: e.target.value})}
+          placeholder="Name of store/vendor you will visit"
+          className={errors.remarks ? 'border-red-500' : ''}
+        />
+        {errors.remarks && <p className="text-red-500 text-sm mt-1">{errors.remarks}</p>}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="department">Department *</Label>
+          <select 
+            id="department"
+            value={advanceData.department || ''}
+            onChange={(e) => setAdvanceData({...advanceData, department: e.target.value})}
+            className={`w-full px-3 py-2 border rounded-md ${errors.department ? 'border-red-500' : ''}`}
+          >
+            <option value="">Select Department</option>
+            {departments.map(dept => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
+          {errors.department && <p className="text-red-500 text-sm mt-1">{errors.department}</p>}
+        </div>
+        <div>
+          <Label htmlFor="company">Company *</Label>
+          <Input
+            id="company"
+            value={advanceData.company || ''}   // ✅ Fixed with closing brace
+            onChange={(e) => setAdvanceData({...advanceData, company: e.target.value})}
+            placeholder="Company name"
+            className={errors.company ? 'border-red-500' : ''}
+          />
+          {errors.company && <p className="text-red-500 text-sm mt-1">{errors.company}</p>}
+        </div>
       </div>
 
       <div>

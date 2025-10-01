@@ -7,7 +7,9 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "jest"
+    "test": "jest",
+        "debug-db": "ts-node src/scripts/debugDatabase.ts"
+
   },
   "keywords": [
     "cash",

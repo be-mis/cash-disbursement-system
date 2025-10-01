@@ -139,12 +139,12 @@ const InboxPage: React.FC<InboxPageProps> = ({ currentUser, onUpdateRequest }) =
         }
         
         if (role === 'Finance' && status === 'PENDING_FINANCE') {
+            const label = request.amount > 20000 
+                ? 'Approve & Forward to CEO' 
+                : 'Approve & Process Payment';
+            
             return [
-                { 
-                    label: request.amount > 20000 ? 'Approve & Forward' : 'Approve', 
-                    action: () => openActionModal(request, 'approve'), 
-                    variant: 'primary' 
-                },
+                { label, action: () => openActionModal(request, 'approve'), variant: 'primary' },
                 { label: 'Reject', action: () => openActionModal(request, 'reject'), variant: 'destructive' }
             ];
         }

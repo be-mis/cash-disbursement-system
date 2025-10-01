@@ -3,6 +3,40 @@ import { Request, RequestStatus, CreateRequestDto, UpdateRequestStatusDto, Reque
 import { UserService } from './userService';
 import { v4 as uuidv4 } from 'uuid';
 
+// Add this helper function after your imports
+function transformRequestFromDb(dbRequest: any): Request {
+  return {
+    id: dbRequest.id,
+    requestType: dbRequest.request_type,
+    employeeId: dbRequest.employee_id,
+    employeeName: dbRequest.employee_name,
+    amount: dbRequest.amount,
+    currency: dbRequest.currency,
+    description: dbRequest.description,
+    category: dbRequest.category,
+    status: dbRequest.status,
+    priority: dbRequest.priority,
+    createdAt: dbRequest.created_at,
+    updatedAt: dbRequest.updated_at,
+    nextActionBy: JSON.parse(dbRequest.next_action_by || '[]'),
+    
+    // New fields
+    expenseStartDate: dbRequest.expense_start_date,
+    expenseEndDate: dbRequest.expense_end_date,
+    businessPurpose: dbRequest.business_purpose,
+    department: dbRequest.department,
+    company: dbRequest.company,
+    destination: dbRequest.destination,
+    remarks: dbRequest.remarks,
+    advancePurpose: dbRequest.advance_purpose,
+    expectedLiquidationDate: dbRequest.expected_liquidation_date,
+    
+    timeline: [],
+    approvers: [],
+    attachments: []
+  } as Request;
+}
+
 const userService = new UserService();
 
 // Helper: Generate REQ001-style ID
@@ -45,17 +79,21 @@ export class RequestService {
     params.push(limit, offset);
 
     const [rows] = await pool.execute(query, params);
-    return { requests: rows as Request[], totalCount };
+    return { 
+      requests: (rows as any[]).map(transformRequestFromDb), 
+      totalCount 
+    };
   }
 
   async getRequestById(id: string): Promise<Request | null> {
     const [rows] = await pool.execute('SELECT * FROM requests WHERE id = ?', [id]);
-    return (rows as Request[])[0] || null;
+    const request = (rows as any[])[0];
+    return request ? transformRequestFromDb(request) : null;
   }
 
   async getRequestsByUser(userId: number): Promise<Request[]> {
     const [rows] = await pool.execute('SELECT * FROM requests WHERE employee_id = ? ORDER BY created_at DESC', [userId]);
-    return rows as Request[];
+    return (rows as any[]).map(transformRequestFromDb);
   }
 
   async getInboxForUser(userId: number): Promise<Request[]> {
@@ -69,19 +107,43 @@ export class RequestService {
        ORDER BY created_at DESC`,
       [user.role]
     );
-    return rows as Request[];
+    return (rows as any[]).map(transformRequestFromDb);
   }
 
   async createRequest(requestData: CreateRequestDto): Promise<Request> {
     const employee = await userService.getUserById(requestData.employeeId);
     if (!employee) throw new Error('Employee not found');
 
-    // Determine workflow
+    // Validate required fields based on request type
+    const requestType = requestData.requestType || 'REIMBURSEMENT';
+    if (!requestData.category || !requestData.description || !requestData.amount) {
+      throw new Error('Category, description, and amount are required for all requests');
+    }
+
+    if (requestType === 'REIMBURSEMENT' && !requestData.businessPurpose) {
+      throw new Error('Business purpose is required for reimbursement requests');
+    }
+    if (requestType === 'CASH_ADVANCE' && !requestData.advancePurpose) {
+      throw new Error('Advance purpose is required for cash advance requests');
+    }
+    if (requestType === 'LIQUIDATION' && !requestData.department) {
+      throw new Error('Department is required for liquidation requests');
+    }
+
+    // Add basic input validation
+    if (requestData.amount <= 0) {
+      throw new Error('Amount must be greater than 0');
+    }
+    if (requestData.urgency && !['Low', 'Medium', 'High'].includes(requestData.urgency)) {
+      throw new Error('Urgency must be Low, Medium, or High');
+    }
+
+    // Determine workflow based on employee role
     let status: RequestStatus = 'PENDING_VALIDATION';
     let nextActionBy: Role[] = ['Manager'];
 
     if (employee.role === 'Manager') {
-      status = 'PENDING_APPROVAL';
+      status = 'PENDING_FINANCE';
       nextActionBy = ['Finance'];
     } else if (employee.role === 'Finance') {
       status = requestData.amount > 20000 ? 'PENDING_CEO' : 'APPROVED';
@@ -93,38 +155,109 @@ export class RequestService {
 
     const requestId = await generateRequestId();
 
-    // Insert request
-    await pool.execute(
-      `INSERT INTO requests (
-        id, employee_id, employee_name, amount, category, description,
-        status, next_action_by, urgency, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [
-        requestId,
-        requestData.employeeId,
-        employee.name,
-        requestData.amount,
-        requestData.category,
-        requestData.description,
-        status,
-        JSON.stringify(nextActionBy),
-        requestData.urgency || 'Medium'
-      ]
-    );
+    // Build the SQL INSERT dynamically based on request type
+    const baseColumns = [
+      'id', 'request_type', 'employee_id', 'employee_name', 'amount', 
+      'category', 'description', 'status', 'next_action_by', 'priority',
+      'created_at', 'updated_at'
+    ];
+    
+    const baseValues = [
+      requestId,
+      requestType,
+      requestData.employeeId,
+      employee.name,
+      requestData.amount,
+      requestData.category,
+      requestData.description,
+      status,
+      JSON.stringify(nextActionBy),
+      requestData.urgency || 'Medium'
+    ];
+
+    // Add fields specific to each request type
+    if (requestType === 'REIMBURSEMENT') {
+      if (requestData.expenseStartDate) {
+        baseColumns.push('expense_start_date');
+        baseValues.push(requestData.expenseStartDate);
+      }
+      if (requestData.expenseEndDate) {
+        baseColumns.push('expense_end_date');
+        baseValues.push(requestData.expenseEndDate);
+      }
+      if (requestData.businessPurpose) {
+        baseColumns.push('business_purpose');
+        baseValues.push(requestData.businessPurpose);
+      }
+      if (requestData.department) {
+        baseColumns.push('department');
+        baseValues.push(requestData.department);
+      }
+      if (requestData.company) {
+        baseColumns.push('company');
+        baseValues.push(requestData.company);
+      }
+    } else if (requestType === 'CASH_ADVANCE') {
+      if (requestData.destination) {
+        baseColumns.push('destination');
+        baseValues.push(requestData.destination);
+      }
+      if (requestData.plannedExpenseDate) {
+        baseColumns.push('expense_start_date');
+        baseValues.push(requestData.plannedExpenseDate);
+      }
+      if (requestData.expectedLiquidationDate) {
+        baseColumns.push('expected_liquidation_date');
+        baseValues.push(requestData.expectedLiquidationDate);
+      }
+      if (requestData.advancePurpose) {
+        baseColumns.push('advance_purpose');
+        baseValues.push(requestData.advancePurpose);
+      }
+      if (requestData.remarks) {
+        baseColumns.push('remarks');
+        baseValues.push(requestData.remarks);
+      }
+      if (requestData.department) {
+        baseColumns.push('department');
+        baseValues.push(requestData.department);
+      }
+      if (requestData.company) {
+        baseColumns.push('company');
+        baseValues.push(requestData.company);
+      }
+    } else if (requestType === 'LIQUIDATION') {
+      if (requestData.department) {
+        baseColumns.push('department');
+        baseValues.push(requestData.department);
+      }
+      if (requestData.company) {
+        baseColumns.push('company');
+        baseValues.push(requestData.company);
+      }
+    }
+
+    // Build SQL query
+    const placeholders = baseColumns.map(() => '?').join(', ');
+    const query = `
+      INSERT INTO requests (${baseColumns.join(', ')}, created_at, updated_at)
+      VALUES (${placeholders}, NOW(), NOW())
+    `;
+
+    await pool.execute(query, baseValues);
 
     // Insert timeline event
     await pool.execute(
       `INSERT INTO timeline_events (
-        request_id, stage, decision, actor_id, actor_name, actor_role, timestamp, type
-      ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)`,
+        request_id, stage, decision, actor_id, actor_name, actor_role, timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, NOW())`,
       [
         requestId,
         'Request Submitted',
         'submitted',
         employee.id,
         employee.name,
-        employee.role,
-        'user'
+        employee.role
       ]
     );
 
@@ -136,8 +269,51 @@ export class RequestService {
     const actor = await userService.getUserById(statusUpdate.actorId);
     if (!request || !actor) return null;
 
-    const newStatus = statusUpdate.status;
-    const nextActionBy = this.getNextActionBy(newStatus);
+    let newStatus: RequestStatus;
+    let nextActionBy: Role[];
+
+    // ✅ FIXED: Handle each role's approval logic explicitly
+    if (statusUpdate.status === 'APPROVED') {
+      // When someone clicks "Approve", determine the next step based on their role
+      
+      if (actor.role === 'Manager') {
+        // ✅ Manager approving → Always go to Finance next
+        newStatus = 'PENDING_FINANCE';
+        nextActionBy = ['Finance'];
+        
+      } else if (actor.role === 'Finance') {
+        // ✅ Finance approving → Check amount threshold
+        if (request.amount > 20000) {
+          // Large amount → Need CEO approval
+          newStatus = 'PENDING_CEO';
+          nextActionBy = ['CEO'];
+        } else {
+          // Small amount (≤ ₱20,000) → Final approval, skip CEO
+          newStatus = 'APPROVED';
+          nextActionBy = [];
+        }
+        
+      } else if (actor.role === 'CEO') {
+        // ✅ CEO approving → Always final approval
+        newStatus = 'APPROVED';
+        nextActionBy = [];
+        
+      } else {
+        // Fallback for Employee role (shouldn't happen in normal flow)
+        newStatus = 'PENDING_VALIDATION';
+        nextActionBy = ['Manager'];
+      }
+      
+    } else if (statusUpdate.status === 'REJECTED') {
+      // ✅ Rejection can happen at any stage
+      newStatus = 'REJECTED';
+      nextActionBy = [];
+      
+    } else {
+      // ✅ For other statuses (PROCESSING_PAYMENT, PAID, etc.)
+      newStatus = statusUpdate.status;
+      nextActionBy = this.getNextActionBy(newStatus);
+    }
 
     // Update request
     await pool.execute(
@@ -148,17 +324,15 @@ export class RequestService {
     // Add timeline event
     await pool.execute(
       `INSERT INTO timeline_events (
-        request_id, stage, decision, actor_id, actor_name, actor_role, comment, timestamp, type
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+        request_id, stage, decision, actor_id, actor_name, actor_role, timestamp
+      ) VALUES (?, ?, ?, ?, ?, ?, NOW())`,
       [
         requestId,
         this.getStageFromStatus(newStatus),
         this.getDecisionFromStatus(newStatus),
         actor.id,
         actor.name,
-        actor.role,
-        statusUpdate.comment || null,
-        'user'
+        actor.role
       ]
     );
 
@@ -174,7 +348,7 @@ export class RequestService {
     const [rows] = await pool.execute(`
       SELECT 
         COUNT(*) as totalRequests,
-        COUNT(CASE WHEN status IN ('PENDING_VALIDATION', 'PENDING_APPROVAL', 'APPROVED', 'PROCESSING_PAYMENT') THEN 1 END) as pendingRequests,
+        COUNT(CASE WHEN status IN ('PENDING_VALIDATION', 'PENDING_FINANCE', 'PENDING_CEO', 'APPROVED', 'PROCESSING_PAYMENT') THEN 1 END) as pendingRequests,
         SUM(CASE WHEN status = 'APPROVED' THEN amount ELSE 0 END) as approvedAmount,
         SUM(CASE WHEN status = 'PAID' THEN amount ELSE 0 END) as paidAmount
       FROM requests
@@ -200,10 +374,18 @@ export class RequestService {
     switch (status) {
       case 'PENDING_VALIDATION':
         return ['Manager'];
-      case 'PENDING_APPROVAL':
+      case 'PENDING_FINANCE':
         return ['Finance'];
+      case 'PENDING_CEO':
+        return ['CEO'];
       case 'APPROVED':
+        return [];
+      case 'PROCESSING_PAYMENT':
         return ['Finance'];
+      case 'PAID':
+        return [];
+      case 'REJECTED':
+        return [];
       default:
         return [];
     }
@@ -213,12 +395,18 @@ export class RequestService {
     switch (status) {
       case 'PENDING_VALIDATION':
         return 'Pending Manager Validation';
-      case 'PENDING_APPROVAL':
+      case 'PENDING_FINANCE':
         return 'Pending Finance Approval';
+      case 'PENDING_CEO':
+        return 'Pending CEO Approval';
       case 'APPROVED':
         return 'Approved';
       case 'REJECTED':
         return 'Request Rejected';
+      case 'PROCESSING_PAYMENT':
+        return 'Processing Payment';
+      case 'PAID':
+        return 'Payment Released';
       default:
         return 'Unknown Stage';
     }
@@ -232,8 +420,14 @@ export class RequestService {
         return 'rejected';
       case 'PENDING_VALIDATION':
         return 'submitted';
-      case 'PENDING_APPROVAL':
+      case 'PENDING_FINANCE':
         return 'validated';
+      case 'PENDING_CEO':
+        return 'validated';
+      case 'PROCESSING_PAYMENT':
+        return 'validated';
+      case 'PAID':
+        return 'released';
       default:
         return 'submitted';
     }

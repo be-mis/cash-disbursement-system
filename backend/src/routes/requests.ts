@@ -117,7 +117,8 @@ router.post('/', async (req, res) => {
   try {
     const requestData: CreateRequestDto = req.body;
     
-    // Basic validation
+    console.log('Received request data:', requestData); // ADD THIS
+    
     if (!requestData.employeeId || !requestData.amount || !requestData.category || !requestData.description) {
       const response: ApiResponse = {
         success: false,
@@ -143,6 +144,11 @@ router.post('/', async (req, res) => {
     };
     res.status(201).json(response);
   } catch (error) {
+    console.error('ERROR CREATING REQUEST:', error); // ADD THIS
+    if (error instanceof Error) {
+      console.error('Error message:', error.message); // ADD THIS
+      console.error('Error stack:', error.stack); // ADD THIS
+    }
     const response: ApiResponse = {
       success: false,
       error: 'Failed to create request'

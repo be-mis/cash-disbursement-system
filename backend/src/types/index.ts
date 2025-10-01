@@ -14,14 +14,18 @@ export interface User {
 
 // Request types
 export type RequestStatus = 
-  | 'PENDING_VALIDATION' 
-  | 'PENDING_APPROVAL' 
-  | 'APPROVED' 
-  | 'PROCESSING_PAYMENT' 
-  | 'PAID' 
-  | 'REJECTED';
+  | 'PENDING_VALIDATION'      // Employee submitted, waiting for Manager
+  | 'PENDING_FINANCE'         // Manager validated, waiting for Finance (or CEO for >20k)
+  | 'PENDING_CEO'             // Finance validated, waiting for CEO approval
+  | 'APPROVED'                // Fully approved, ready for payment processing
+  | 'PROCESSING_PAYMENT'      // Finance is processing the payment
+  | 'PAID'                    // Payment has been released
+  | 'REJECTED';               // Request was rejected at any stage
 
 export type RequestCategory = 
+  | 'Reimbursement'
+  | 'Cash Advance'
+  | 'Liquidation'
   | 'Office Supplies'
   | 'Travel'
   | 'Marketing'
@@ -72,10 +76,26 @@ export interface ApiResponse<T = any> {
 export interface CreateRequestDto {
   employeeId: number;
   amount: number;
-  category: RequestCategory;
+  category: string;
   description: string;
-  urgency?: 'Low' | 'Medium' | 'High';
-  attachments?: string[];
+  urgency?: string;
+  
+  // New Reimbursement fields
+  expenseStartDate?: string;
+  expenseEndDate?: string;
+  businessPurpose?: string;
+  department?: string;
+  company?: string;
+  
+  // New Cash Advance fields
+  destination?: string;
+  plannedExpenseDate?: string;
+  expectedLiquidationDate?: string;
+  advancePurpose?: string;
+  remarks?: string;
+  
+  // Request type
+  requestType?: 'REIMBURSEMENT' | 'CASH_ADVANCE' | 'LIQUIDATION';
 }
 
 export interface UpdateRequestStatusDto {

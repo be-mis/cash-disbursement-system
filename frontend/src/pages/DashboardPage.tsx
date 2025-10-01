@@ -49,9 +49,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, requests }) 
         ).length;
     };
 
+    // ✅ FIXED: Now shows only the current user's request statuses
     const getStatusCounts = () => {
         const counts: { [key in RequestStatus]?: number } = {};
-        requests.forEach(req => {
+        userRequests.forEach(req => {  // ✅ Changed from 'requests' to 'userRequests'
             counts[req.status] = (counts[req.status] || 0) + 1;
         });
         return Object.entries(counts).sort(([a], [b]) => {
@@ -148,15 +149,19 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, requests }) 
             <div className="grid gap-6 lg:grid-cols-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Request Dashboard</CardTitle>
+                        <CardTitle>My Request Status</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
-                        {statusCounts.map(([status, count]) => (
-                            <div key={status} className="flex justify-between items-center text-sm">
-                                <StatusBadge status={status as RequestStatus} />
-                                <span className="font-semibold">{count}</span>
-                            </div>
-                        ))}
+                        {statusCounts.length > 0 ? (
+                            statusCounts.map(([status, count]) => (
+                                <div key={status} className="flex justify-between items-center text-sm">
+                                    <StatusBadge status={status as RequestStatus} />
+                                    <span className="font-semibold">{count}</span>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-sm text-muted-foreground">No requests yet</p>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -213,7 +218,6 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, requests }) 
                                         <td className="p-3">
                                             <div>
                                                 <p className="font-medium">{req.description}</p>
-                                                {/* Show connection info for advances and liquidations */}
                                                 {req.requestType === 'CASH_ADVANCE' && (req as CashAdvanceRequest).liquidationId && (
                                                     <p className="text-xs text-muted-foreground">
                                                         → Liquidated in {(req as CashAdvanceRequest).liquidationId}
