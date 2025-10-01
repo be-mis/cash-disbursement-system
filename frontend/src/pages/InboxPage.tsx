@@ -195,7 +195,12 @@ const InboxPage: React.FC<InboxPageProps> = ({ currentUser, onUpdateRequest }) =
                 break;
             case 'approve':
                 if (currentUser.role === 'Finance') {
-                    newStatus = 'PENDING_CEO';
+                    // Check amount to decide next status
+                    if (selectedRequest.amount > 20000) {
+                        newStatus = 'PENDING_CEO';
+                    } else {
+                        newStatus = 'APPROVED'; // ✅ Go directly to APPROVED for small amounts
+                    }
                 } else if (currentUser.role === 'CEO') {
                     newStatus = 'APPROVED';
                 }

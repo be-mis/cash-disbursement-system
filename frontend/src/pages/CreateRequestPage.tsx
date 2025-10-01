@@ -81,7 +81,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
   const [advanceData, setAdvanceData] = useState<Partial<CreateCashAdvanceDto>>({
     employeeId: currentUser.id,
     estimatedAmount: undefined,  // ✅ FIXED
-    category: 'Travel',
+    category: '',  // Changed from 'Travel' to empty string
     description: '',
     plannedExpenseDate: '',
     advancePurpose: '',
@@ -323,7 +323,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         setAdvanceData({
           employeeId: currentUser.id,
           estimatedAmount: undefined,  // ✅ FIXED
-          category: 'Travel',
+          category: '',  // Changed from 'Travel' to empty string
           description: '',
           plannedExpenseDate: '',
           advancePurpose: '',
@@ -489,8 +489,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           <Label htmlFor="department">Department *</Label>
           <select 
             id="department"
-            value={reimbursementData.department || ''
-            }
+            value={reimbursementData.department || ''}
             onChange={(e) => setReimbursementData({...reimbursementData, department: e.target.value})}
             className={`w-full px-3 py-2 border rounded-md ${errors.department ? 'border-red-500' : ''}`}
           >
@@ -544,8 +543,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         <Label htmlFor="description">Description *</Label>
         <Textarea
           id="description"
-          value={reimbursementData.description || ''
-          }
+          value={reimbursementData.description || ''}
           onChange={(e) => setReimbursementData({...reimbursementData, description: e.target.value})}
           placeholder="Detailed description of the expense..."
           rows={3}
@@ -652,7 +650,11 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           <select 
             id="category"
             value={advanceData.category || ''}
-            onChange={(e) => setAdvanceData({...advanceData, category: e.target.value as RequestCategory})}
+            onChange={(e) => {
+              const newCategory = e.target.value as RequestCategory;
+              console.log('Selected category:', newCategory);  // Debug
+              setAdvanceData({...advanceData, category: newCategory});
+            }}
             className="w-full px-3 py-2 border rounded-md"
           >
             {categories.map(cat => (
@@ -702,24 +704,64 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
       </div>
 
       <div>
-        <Label htmlFor="destination">Destination/Location *</Label>
+        <Label htmlFor="destination">
+          {advanceData.category === 'Travel' 
+            ? 'Destination/Location *' 
+            : advanceData.category === 'Office Supplies'
+            ? 'Supplier/Store Location *'
+            : advanceData.category === 'Software'
+            ? 'Software Vendor/Platform *'
+            : advanceData.category === 'Marketing' || advanceData.category === 'Marketing Expense'
+            ? 'Campaign/Event Location *'
+            : 'Location/Venue *'}
+        </Label>
         <Input
           id="destination"
           value={advanceData.destination || ''}
           onChange={(e) => setAdvanceData({...advanceData, destination: e.target.value})}
-          placeholder="e.g., Manila, Cebu, Client Office"
+          placeholder={
+            advanceData.category === 'Travel' 
+              ? 'e.g., Manila, Cebu, Client Office'
+              : advanceData.category === 'Office Supplies'
+              ? 'e.g., Office Warehouse, SM Makati'
+              : advanceData.category === 'Software'
+              ? 'e.g., Adobe, Microsoft Store'
+              : advanceData.category === 'Marketing' || advanceData.category === 'Marketing Expense'
+              ? 'e.g., Trade Show Venue, Event Center'
+              : 'Location where expense will occur'
+          }
           className={errors.destination ? 'border-red-500' : ''}
         />
         {errors.destination && <p className="text-red-500 text-sm mt-1">{errors.destination}</p>}
       </div>
 
       <div>
-        <Label htmlFor="remarks">Remarks (Store/Vendor Name) *</Label>
+        <Label htmlFor="remarks">
+          {advanceData.category === 'Travel'
+            ? 'Remarks (Client/Meeting Details) *'
+            : advanceData.category === 'Office Supplies'
+            ? 'Remarks (Items Needed) *'
+            : advanceData.category === 'Software'
+            ? 'Remarks (Software/License Details) *'
+            : advanceData.category === 'Marketing' || advanceData.category === 'Marketing Expense'
+            ? 'Remarks (Campaign/Event Details) *'
+            : 'Remarks (Purpose/Details) *'}
+        </Label>
         <Input
           id="remarks"
           value={advanceData.remarks || ''}
           onChange={(e) => setAdvanceData({...advanceData, remarks: e.target.value})}
-          placeholder="Name of store/vendor you will visit"
+          placeholder={
+            advanceData.category === 'Travel'
+              ? 'Meeting with ABC Corp, Client presentation'
+              : advanceData.category === 'Office Supplies'
+              ? 'Printer paper, folders, office equipment'
+              : advanceData.category === 'Software'
+              ? 'Adobe Creative Cloud annual subscription'
+              : advanceData.category === 'Marketing' || advanceData.category === 'Marketing Expense'
+              ? 'Q4 product launch event materials'
+              : 'Details about the expense'
+          }
           className={errors.remarks ? 'border-red-500' : ''}
         />
         {errors.remarks && <p className="text-red-500 text-sm mt-1">{errors.remarks}</p>}
@@ -758,8 +800,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         <Label htmlFor="advancePurpose">Advance Purpose *</Label>
         <Input
           id="advancePurpose"
-          value={advanceData.advancePurpose || ''
-          }
+          value={advanceData.advancePurpose || ''}
           onChange={(e) => setAdvanceData({...advanceData, advancePurpose: e.target.value})}
           placeholder="What will this advance be used for?"
           className={errors.advancePurpose ? 'border-red-500' : ''}
@@ -771,8 +812,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         <Label htmlFor="description">Description *</Label>
         <Textarea
           id="description"
-          value={advanceData.description || ''
-          }
+          value={advanceData.description || ''}
           onChange={(e) => setAdvanceData({...advanceData, description: e.target.value})}
           placeholder="Detailed description of planned expenses..."
           rows={3}
@@ -803,8 +843,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
               <Label htmlFor="budgetImpactAssessment">Budget Impact Assessment *</Label>
               <Textarea
                 id="budgetImpactAssessment"
-                value={advanceData.budgetImpactAssessment || ''
-                }
+                value={advanceData.budgetImpactAssessment || ''}
                 onChange={(e) => setAdvanceData({...advanceData, budgetImpactAssessment: e.target.value})}
                 placeholder="Assess budget impact and cash flow implications of this advance..."
                 rows={2}
@@ -817,8 +856,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
               <Label htmlFor="riskAssessment">Risk Assessment *</Label>
               <Textarea
                 id="riskAssessment"
-                value={advanceData.riskAssessment || ''
-                }
+                value={advanceData.riskAssessment || ''}
                 onChange={(e) => setAdvanceData({...advanceData, riskAssessment: e.target.value})}
                 placeholder="Identify potential risks and mitigation strategies for this advance..."
                 rows={2}
@@ -832,8 +870,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
                 <Label htmlFor="expectedROI">Expected ROI/Business Value *</Label>
                 <Textarea
                   id="expectedROI"
-                  value={advanceData.expectedROI || ''
-                  }
+                  value={advanceData.expectedROI || ''}
                   onChange={(e) => setAdvanceData({...advanceData, expectedROI: e.target.value})}
                   placeholder="For high-value advances, document expected return on investment or business value..."
                   rows={2}
@@ -930,8 +967,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           <Label htmlFor="description">Description *</Label>
           <Textarea
             id="description"
-            value={liquidationData.description || ''
-            }
+            value={liquidationData.description || ''}
             onChange={(e) => setLiquidationData({...liquidationData, description: e.target.value})}
             placeholder="Overall description of the liquidation..."
             rows={3}
@@ -955,8 +991,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
                       <Label htmlFor="varianceExplanation">Variance Explanation *</Label>
                       <Textarea
                         id="varianceExplanation"
-                        value={liquidationData.varianceExplanation || ''
-                        }
+                        value={liquidationData.varianceExplanation || ''}
                         onChange={(e) => setLiquidationData({...liquidationData, varianceExplanation: e.target.value})}
                         placeholder="Explain why actual spending differed significantly from the estimated amount..."
                         rows={3}
@@ -975,8 +1010,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
                 <Label htmlFor="lessonsLearned">Lessons Learned *</Label>
                 <Textarea
                   id="lessonsLearned"
-                  value={liquidationData.lessonsLearned || ''
-                  }
+                  value={liquidationData.lessonsLearned || ''}
                   onChange={(e) => setLiquidationData({...liquidationData, lessonsLearned: e.target.value})}
                   placeholder="Document key insights and lessons learned from this expense that could improve future planning..."
                   rows={3}
