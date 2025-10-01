@@ -62,7 +62,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
 
   const [reimbursementData, setReimbursementData] = useState<Partial<CreateReimbursementDto>>({
     employeeId: currentUser.id,
-    amount: 0,
+    amount: undefined,  // ✅ CORRECT
     category: 'Office Supplies',
     description: '',
     expenseStartDate: '',      // NEW
@@ -80,7 +80,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
 
   const [advanceData, setAdvanceData] = useState<Partial<CreateCashAdvanceDto>>({
     employeeId: currentUser.id,
-    estimatedAmount: 0,
+    estimatedAmount: undefined,  // ✅ FIXED
     category: 'Travel',
     description: '',
     plannedExpenseDate: '',
@@ -99,7 +99,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
 
   const [liquidationData, setLiquidationData] = useState<Partial<CreateLiquidationDto>>({
     advanceId: '',
-    actualAmount: 0,
+    actualAmount: undefined,  // ✅ FIXED
     description: '',
     liquidationSummary: '',
     attachments: [],
@@ -121,7 +121,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
   ];
 
   const departments = [
-    'IT',
+    'MIS',
     'Sales', 
     'Marketing',
     'HR',
@@ -144,7 +144,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     if (selectedType === 'LIQUIDATION') {
       setLiquidationData({
         advanceId: '',
-        actualAmount: 0,
+        actualAmount: undefined,  // ✅ FIXED
         description: '',
         liquidationSummary: '',
         attachments: [],
@@ -158,7 +158,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     const newErrors: Record<string, string> = {};
 
     if (selectedType === 'REIMBURSEMENT') {
-      if (!reimbursementData.amount || reimbursementData.amount <= 0) {
+      if (!reimbursementData.amount && reimbursementData.amount !== 0) {
         newErrors.amount = 'Amount must be greater than 0';
       }
       if (!reimbursementData.description?.trim()) {
@@ -205,7 +205,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
     }
 
     if (selectedType === 'CASH_ADVANCE') {
-      if (!advanceData.estimatedAmount || advanceData.estimatedAmount <= 0) {
+      if (!advanceData.estimatedAmount && advanceData.estimatedAmount !== 0) {
         newErrors.estimatedAmount = 'Estimated amount must be greater than 0';
       }
       if (!advanceData.description?.trim()) {
@@ -258,7 +258,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
       if (!liquidationData.advanceId) {
         newErrors.advanceId = 'Please select an advance to liquidate';
       }
-      if (!liquidationData.actualAmount || liquidationData.actualAmount <= 0) {
+      if (!liquidationData.actualAmount && liquidationData.actualAmount !== 0) {
         newErrors.actualAmount = 'Actual amount must be greater than 0';
       }
       if (!liquidationData.description?.trim()) {
@@ -303,7 +303,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         await api.createReimbursementRequest(reimbursementData as CreateReimbursementDto);
         setReimbursementData({
           employeeId: currentUser.id,
-          amount: 0,
+          amount: undefined,  // ✅ CORRECT
           category: 'Office Supplies',
           description: '',
           expenseStartDate: '',      // NEW
@@ -322,7 +322,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         await api.createCashAdvanceRequest(advanceData as CreateCashAdvanceDto);
         setAdvanceData({
           employeeId: currentUser.id,
-          estimatedAmount: 0,
+          estimatedAmount: undefined,  // ✅ FIXED
           category: 'Travel',
           description: '',
           plannedExpenseDate: '',
@@ -342,7 +342,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         await api.createLiquidationRequest(liquidationData as CreateLiquidationDto);
         setLiquidationData({
           advanceId: '',
-          actualAmount: 0,
+          actualAmount: undefined,  // ✅ FIXED
           description: '',
           liquidationSummary: '',
           attachments: [],
@@ -427,8 +427,11 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
             type="number"
             step="0.01"
             min="0"
-            value={reimbursementData.amount || ''}
-            onChange={(e) => setReimbursementData({...reimbursementData, amount: parseFloat(e.target.value) || 0})}
+            value={reimbursementData.amount ?? ''}
+            onChange={(e) => setReimbursementData({
+              ...reimbursementData, 
+              amount: e.target.value ? parseFloat(e.target.value) : undefined
+            })}
             className={errors.amount ? 'border-red-500' : ''}
           />
           {errors.amount && <p className="text-red-500 text-sm mt-1">{errors.amount}</p>}
@@ -453,7 +456,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         </div>
       </div>
 
-      {/* REPLACE the single expenseDate field with these two date fields */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="expenseStartDate">Expense Start Date *</Label>
@@ -482,13 +484,13 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         </div>
       </div>
 
-      {/* ADD these new fields after the date fields */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="department">Department *</Label>
           <select 
             id="department"
-            value={reimbursementData.department || ''}
+            value={reimbursementData.department || ''
+            }
             onChange={(e) => setReimbursementData({...reimbursementData, department: e.target.value})}
             className={`w-full px-3 py-2 border rounded-md ${errors.department ? 'border-red-500' : ''}`}
           >
@@ -542,7 +544,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         <Label htmlFor="description">Description *</Label>
         <Textarea
           id="description"
-          value={reimbursementData.description || ''}
+          value={reimbursementData.description || ''
+          }
           onChange={(e) => setReimbursementData({...reimbursementData, description: e.target.value})}
           placeholder="Detailed description of the expense..."
           rows={3}
@@ -633,8 +636,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
             type="number"
             step="0.01"
             min="0"
-            value={advanceData.estimatedAmount || ''}
-            onChange={(e) => setAdvanceData({...advanceData, estimatedAmount: parseFloat(e.target.value) || 0})}
+            value={advanceData.estimatedAmount ?? ''}
+            onChange={(e) => setAdvanceData({...advanceData, estimatedAmount: e.target.value ? parseFloat(e.target.value) : undefined})}
             className={errors.estimatedAmount ? 'border-red-500' : ''}
           />
           {errors.estimatedAmount && <p className="text-red-500 text-sm mt-1">{errors.estimatedAmount}</p>}
@@ -698,7 +701,6 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         </select>
       </div>
 
-      {/* ADD these new fields after the Priority field */}
       <div>
         <Label htmlFor="destination">Destination/Location *</Label>
         <Input
@@ -743,7 +745,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           <Label htmlFor="company">Company *</Label>
           <Input
             id="company"
-            value={advanceData.company || ''}   // ✅ Fixed with closing brace
+            value={advanceData.company || ''}   
             onChange={(e) => setAdvanceData({...advanceData, company: e.target.value})}
             placeholder="Company name"
             className={errors.company ? 'border-red-500' : ''}
@@ -756,7 +758,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         <Label htmlFor="advancePurpose">Advance Purpose *</Label>
         <Input
           id="advancePurpose"
-          value={advanceData.advancePurpose || ''}
+          value={advanceData.advancePurpose || ''
+          }
           onChange={(e) => setAdvanceData({...advanceData, advancePurpose: e.target.value})}
           placeholder="What will this advance be used for?"
           className={errors.advancePurpose ? 'border-red-500' : ''}
@@ -768,7 +771,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
         <Label htmlFor="description">Description *</Label>
         <Textarea
           id="description"
-          value={advanceData.description || ''}
+          value={advanceData.description || ''
+          }
           onChange={(e) => setAdvanceData({...advanceData, description: e.target.value})}
           placeholder="Detailed description of planned expenses..."
           rows={3}
@@ -799,7 +803,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
               <Label htmlFor="budgetImpactAssessment">Budget Impact Assessment *</Label>
               <Textarea
                 id="budgetImpactAssessment"
-                value={advanceData.budgetImpactAssessment || ''}
+                value={advanceData.budgetImpactAssessment || ''
+                }
                 onChange={(e) => setAdvanceData({...advanceData, budgetImpactAssessment: e.target.value})}
                 placeholder="Assess budget impact and cash flow implications of this advance..."
                 rows={2}
@@ -812,7 +817,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
               <Label htmlFor="riskAssessment">Risk Assessment *</Label>
               <Textarea
                 id="riskAssessment"
-                value={advanceData.riskAssessment || ''}
+                value={advanceData.riskAssessment || ''
+                }
                 onChange={(e) => setAdvanceData({...advanceData, riskAssessment: e.target.value})}
                 placeholder="Identify potential risks and mitigation strategies for this advance..."
                 rows={2}
@@ -826,7 +832,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
                 <Label htmlFor="expectedROI">Expected ROI/Business Value *</Label>
                 <Textarea
                   id="expectedROI"
-                  value={advanceData.expectedROI || ''}
+                  value={advanceData.expectedROI || ''
+                  }
                   onChange={(e) => setAdvanceData({...advanceData, expectedROI: e.target.value})}
                   placeholder="For high-value advances, document expected return on investment or business value..."
                   rows={2}
@@ -883,8 +890,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
             type="number"
             step="0.01"
             min="0"
-            value={liquidationData.actualAmount || ''}
-            onChange={(e) => setLiquidationData({...liquidationData, actualAmount: parseFloat(e.target.value) || 0})}
+            value={liquidationData.actualAmount ?? ''}
+            onChange={(e) => setLiquidationData({...liquidationData, actualAmount: e.target.value ? parseFloat(e.target.value) : undefined})}
             className={errors.actualAmount ? 'border-red-500' : ''}
           />
           {errors.actualAmount && <p className="text-red-500 text-sm mt-1">{errors.actualAmount}</p>}
@@ -923,7 +930,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           <Label htmlFor="description">Description *</Label>
           <Textarea
             id="description"
-            value={liquidationData.description || ''}
+            value={liquidationData.description || ''
+            }
             onChange={(e) => setLiquidationData({...liquidationData, description: e.target.value})}
             placeholder="Overall description of the liquidation..."
             rows={3}
@@ -947,7 +955,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
                       <Label htmlFor="varianceExplanation">Variance Explanation *</Label>
                       <Textarea
                         id="varianceExplanation"
-                        value={liquidationData.varianceExplanation || ''}
+                        value={liquidationData.varianceExplanation || ''
+                        }
                         onChange={(e) => setLiquidationData({...liquidationData, varianceExplanation: e.target.value})}
                         placeholder="Explain why actual spending differed significantly from the estimated amount..."
                         rows={3}
@@ -966,7 +975,8 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
                 <Label htmlFor="lessonsLearned">Lessons Learned *</Label>
                 <Textarea
                   id="lessonsLearned"
-                  value={liquidationData.lessonsLearned || ''}
+                  value={liquidationData.lessonsLearned || ''
+                  }
                   onChange={(e) => setLiquidationData({...liquidationData, lessonsLearned: e.target.value})}
                   placeholder="Document key insights and lessons learned from this expense that could improve future planning..."
                   rows={3}

@@ -162,7 +162,7 @@ export class RequestService {
       'created_at', 'updated_at'
     ];
     
-    const baseValues = [
+    const baseValues: any[] = [
       requestId,
       requestType,
       requestData.employeeId,
@@ -172,7 +172,9 @@ export class RequestService {
       requestData.description,
       status,
       JSON.stringify(nextActionBy),
-      requestData.urgency || 'Medium'
+      requestData.urgency || 'Medium',
+      new Date(),  // created_at
+      new Date()   // updated_at
     ];
 
     // Add fields specific to each request type
@@ -240,8 +242,8 @@ export class RequestService {
     // Build SQL query
     const placeholders = baseColumns.map(() => '?').join(', ');
     const query = `
-      INSERT INTO requests (${baseColumns.join(', ')}, created_at, updated_at)
-      VALUES (${placeholders}, NOW(), NOW())
+      INSERT INTO requests (${baseColumns.join(', ')})
+      VALUES (${placeholders})
     `;
 
     await pool.execute(query, baseValues);
