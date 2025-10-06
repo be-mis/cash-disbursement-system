@@ -375,7 +375,7 @@ const InboxPage: React.FC<InboxPageProps> = ({ currentUser, onUpdateRequest }) =
                                 {actionType === 'validate' && ' This will forward it to Finance for review.'}
                                 {actionType === 'approve' && currentUser.role === 'Finance' && (
                                     selectedRequest.amount > 20000 
-                                    ? ' This will forward it to CEO for final approval.'
+                                    ? ' This will forward it to President for final approval.'
                                     : ' This will mark it as approved and ready for payment.'
                                 )}
                                 {actionType === 'approve' && currentUser.role === 'CEO' && ' This will mark it ready for payment processing.'}

@@ -33,7 +33,7 @@ const LoginComponent: React.FC<LoginComponentProps> = ({ onLogin, isLoading, err
     { name: 'Bob Chen', role: 'Manager', email: 'bob.chen@company.com', password: 'bob123', department: 'Operations' },
     { name: 'Frank Wilson', role: 'Manager', email: 'frank.wilson@company.com', password: 'frank123', department: 'IT' },
     { name: 'Charlie Rodriguez', role: 'Finance', email: 'charlie.rodriguez@company.com', password: 'charlie123', department: 'Finance' },
-    { name: 'Diana Park', role: 'CEO', email: 'diana.park@company.com', password: 'diana123', department: 'Executive' },
+{ name: 'Diana Park', role: 'President', email: 'diana.park@company.com', password: 'diana123', department: 'Executive' },
   ];
 
   const getRoleBadgeColor = (role: string) => {
@@ -41,7 +41,7 @@ const LoginComponent: React.FC<LoginComponentProps> = ({ onLogin, isLoading, err
       'Employee': 'bg-blue-50 border-blue-200 text-blue-700',
       'Manager': 'bg-green-50 border-green-200 text-green-700',
       'Finance': 'bg-purple-50 border-purple-200 text-purple-700',
-      'CEO': 'bg-red-50 border-red-200 text-red-700'
+      'President': 'bg-red-50 border-red-200 text-red-700'
     };
     return colors[role as keyof typeof colors] || 'bg-gray-50 border-gray-200 text-gray-700';
   };

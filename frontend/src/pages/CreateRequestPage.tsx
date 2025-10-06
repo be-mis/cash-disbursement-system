@@ -437,7 +437,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           {errors.amount && <p className="text-red-500 text-sm mt-1">{errors.amount}</p>}
           {reimbursementData.amount && reimbursementData.amount > 20000 && (
             <div className="bg-amber-50 border-l-4 border-amber-400 p-2 text-sm text-amber-700 mt-2">
-              ⚠️ Amount exceeds ₱20,000 — CEO approval required.
+              ⚠️ Amount exceeds ₱20,000 — President approval required.
             </div>
           )}
         </div>
@@ -641,7 +641,7 @@ const RequestCreationForms: React.FC<RequestFormProps> = ({
           {errors.estimatedAmount && <p className="text-red-500 text-sm mt-1">{errors.estimatedAmount}</p>}
           {advanceData.estimatedAmount && advanceData.estimatedAmount > 20000 && (
             <div className="bg-amber-50 border-l-4 border-amber-400 p-2 text-sm text-amber-700 mt-2">
-              ⚠️ Amount exceeds ₱20,000 — CEO approval required.
+              ⚠️ Amount exceeds ₱20,000 — President approval required.
             </div>
           )}
         </div>

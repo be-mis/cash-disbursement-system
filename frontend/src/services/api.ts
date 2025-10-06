@@ -1,6 +1,6 @@
 import { User, Request, RequestStatus, CreateReimbursementDto, CreateCashAdvanceDto, CreateLiquidationDto, CashAdvanceRequest } from '../types/types';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = 'http://192.168.0.138:3001/api';  // Use your network IP
 
 export interface LoginCredentials {
   email: string;
